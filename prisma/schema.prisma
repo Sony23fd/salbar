@@ -32,6 +32,8 @@ model User {
   branch               Branch?         @relation(fields: [branchId], references: [id])
   approvedTransfers    StockTransfer[] @relation("TransferApprover")
   createdTransfers     StockTransfer[] @relation("TransferCreator")
+  createdCounts        StockCount[]    @relation("CountCreator")
+  approvedCounts       StockCount[]    @relation("CountApprover")
 
   @@index([role])
   @@index([branchId])
@@ -93,6 +95,7 @@ model Product {
   transferItems           StockTransferItem[]
   stockMovements          StockMovement[]
   batches                 StockBatch[]
+  StockCountItem          StockCountItem[]
 
   @@index([status])
   @@index([categoryId])
@@ -103,19 +106,20 @@ model Product {
 }
 
 model ProductVariant {
-  id            String              @id @default(cuid())
-  productId     String
-  sku           String              @unique
-  name          String
-  options       Json
-  price         Decimal?
-  stockQuantity Int                 @default(0)
-  imageUrl      String?
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-  product       Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
-  inventories   Inventory[]
-  transferItems StockTransferItem[]
+  id             String              @id @default(cuid())
+  productId      String
+  sku            String              @unique
+  name           String
+  options        Json
+  price          Decimal?
+  stockQuantity  Int                 @default(0)
+  imageUrl       String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  product        Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  inventories    Inventory[]
+  transferItems  StockTransferItem[]
+  StockCountItem StockCountItem[]
 
   @@index([productId])
 }
@@ -462,6 +466,13 @@ enum MovementType {
   ADJUSTMENT
 }
 
+enum CountStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
 enum BranchType {
   MAIN_WAREHOUSE
   STORE
@@ -483,6 +494,8 @@ model Branch {
   transfersTo   StockTransfer[] @relation("TransferToBranch")
   movements     StockMovement[]
   batches       StockBatch[]
+  bins          BinLocation[]
+  stockCounts   StockCount[]
 }
 
 model Inventory {
@@ -493,14 +506,16 @@ model Inventory {
   quantity      Int      @default(0)
   minStockLevel Int      @default(0)
   maxStockLevel Int      @default(0)
+  binId         String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   branch  Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
   product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
   variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  bin     BinLocation?    @relation(fields: [binId], references: [id])
 
-  @@unique([branchId, productId, variantId])
+  @@unique([branchId, productId, variantId, binId])
   @@index([branchId])
   @@index([productId])
 }
@@ -543,11 +558,13 @@ model StockTransferItem {
   quantity    Int
   receivedQty Int     @default(0)
   batchId     String?
+  binId       String?
 
   transfer StockTransfer   @relation(fields: [transferId], references: [id], onDelete: Cascade)
   product  Product         @relation(fields: [productId], references: [id])
   variant  ProductVariant? @relation(fields: [variantId], references: [id])
   batch    StockBatch?     @relation(fields: [batchId], references: [id])
+  bin      BinLocation?    @relation(fields: [binId], references: [id])
 
   @@index([transferId])
   @@index([productId])
@@ -563,6 +580,7 @@ model StockMovement {
   transferId String?
   orderId    String?
   batchId    String?
+  binId      String?
   note       String?
   createdAt  DateTime     @default(now())
 
@@ -570,6 +588,7 @@ model StockMovement {
   product  Product        @relation(fields: [productId], references: [id])
   transfer StockTransfer? @relation(fields: [transferId], references: [id])
   batch    StockBatch?    @relation(fields: [batchId], references: [id])
+  bin      BinLocation?   @relation(fields: [binId], references: [id])
 
   @@index([branchId])
   @@index([productId])
@@ -595,4 +614,61 @@ model StockBatch {
   @@index([branchId])
   @@index([productId])
   @@index([expiryDate])
+}
+
+model BinLocation {
+  id        String   @id @default(cuid())
+  branchId  String
+  name      String
+  aisle     String?
+  rack      String?
+  shelf     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch        Branch              @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  inventory     Inventory[]
+  transferItems StockTransferItem[]
+  movements     StockMovement[]
+  countItems    StockCountItem[]
+
+  @@index([branchId])
+}
+
+model StockCount {
+  id           String      @id @default(cuid())
+  branchId     String
+  status       CountStatus @default(DRAFT)
+  note         String?
+  createdById  String
+  approvedById String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  branch     Branch           @relation(fields: [branchId], references: [id])
+  createdBy  User             @relation("CountCreator", fields: [createdById], references: [id])
+  approvedBy User?            @relation("CountApprover", fields: [approvedById], references: [id])
+  items      StockCountItem[]
+
+  @@index([branchId])
+  @@index([status])
+}
+
+model StockCountItem {
+  id           String  @id @default(cuid())
+  stockCountId String
+  productId    String
+  variantId    String?
+  binId        String?
+  systemQty    Int     @default(0)
+  countedQty   Int     @default(0)
+  difference   Int     @default(0)
+
+  stockCount StockCount      @relation(fields: [stockCountId], references: [id], onDelete: Cascade)
+  product    Product         @relation(fields: [productId], references: [id])
+  variant    ProductVariant? @relation(fields: [variantId], references: [id])
+  bin        BinLocation?    @relation(fields: [binId], references: [id])
+
+  @@index([stockCountId])
+  @@index([productId])
 }
