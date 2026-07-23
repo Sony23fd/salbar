@@ -31,6 +31,7 @@
     "date-fns": "^4.1.0",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.1.6",
+    "html5-qrcode": "^2.3.8",
     "iconv-lite": "^0.7.2",
     "iron-session": "^8.0.4",
     "lucide-react": "^0.577.0",

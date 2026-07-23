@@ -10,27 +10,28 @@ datasource db {
 }
 
 model User {
-  id                String          @id @default(cuid())
-  phone             String?         @unique
-  email             String?         @unique
-  password          String?
-  name              String?
-  role              Role            @default(CUSTOMER)
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  address           String?
-  referralCode      String?         @unique
-  referralCount     Int             @default(0)
-  referralReward    Int             @default(0)
-  referredById      String?
-  cart              Cart?
-  orders            Order[]
-  referredBy        User?           @relation("UserReferrals", fields: [referredById], references: [id])
-  referrals         User[]          @relation("UserReferrals")
-  branchId          String?
-  branch            Branch?         @relation(fields: [branchId], references: [id])
-  approvedTransfers StockTransfer[] @relation("TransferApprover")
-  createdTransfers  StockTransfer[] @relation("TransferCreator")
+  id                   String          @id @default(cuid())
+  phone                String?         @unique
+  email                String?         @unique
+  password             String?
+  name                 String?
+  role                 Role            @default(CUSTOMER)
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  canViewOtherBranches Boolean         @default(false)
+  address              String?
+  referralCode         String?         @unique
+  referralCount        Int             @default(0)
+  referralReward       Int             @default(0)
+  referredById         String?
+  cart                 Cart?
+  orders               Order[]
+  referredBy           User?           @relation("UserReferrals", fields: [referredById], references: [id])
+  referrals            User[]          @relation("UserReferrals")
+  branchId             String?
+  branch               Branch?         @relation(fields: [branchId], references: [id])
+  approvedTransfers    StockTransfer[] @relation("TransferApprover")
+  createdTransfers     StockTransfer[] @relation("TransferCreator")
 
   @@index([role])
   @@index([branchId])
@@ -91,6 +92,7 @@ model Product {
   inventories             Inventory[]
   transferItems           StockTransferItem[]
   stockMovements          StockMovement[]
+  batches                 StockBatch[]
 
   @@index([status])
   @@index([categoryId])
@@ -351,6 +353,7 @@ enum Role {
   STAFF
   CARGO_ADMIN
   DATAADMIN
+  BRANCH_MANAGER
 }
 
 enum ProductStatus {
@@ -445,6 +448,12 @@ enum TransferStatus {
   CANCELLED
 }
 
+enum TransferType {
+  REGULAR
+  RETURN
+  DAMAGE_WRITE_OFF
+}
+
 enum MovementType {
   IN
   OUT
@@ -473,16 +482,19 @@ model Branch {
   transfersFrom StockTransfer[] @relation("TransferFromBranch")
   transfersTo   StockTransfer[] @relation("TransferToBranch")
   movements     StockMovement[]
+  batches       StockBatch[]
 }
 
 model Inventory {
-  id        String   @id @default(cuid())
-  branchId  String
-  productId String
-  variantId String?
-  quantity  Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(cuid())
+  branchId      String
+  productId     String
+  variantId     String?
+  quantity      Int      @default(0)
+  minStockLevel Int      @default(0)
+  maxStockLevel Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   branch  Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
   product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -499,6 +511,7 @@ model StockTransfer {
   fromBranchId    String
   toBranchId      String
   status          TransferStatus @default(PENDING)
+  type            TransferType   @default(REGULAR)
   note            String?
 
   createdById  String
@@ -529,10 +542,12 @@ model StockTransferItem {
   variantId   String?
   quantity    Int
   receivedQty Int     @default(0)
+  batchId     String?
 
   transfer StockTransfer   @relation(fields: [transferId], references: [id], onDelete: Cascade)
   product  Product         @relation(fields: [productId], references: [id])
   variant  ProductVariant? @relation(fields: [variantId], references: [id])
+  batch    StockBatch?     @relation(fields: [batchId], references: [id])
 
   @@index([transferId])
   @@index([productId])
@@ -547,14 +562,37 @@ model StockMovement {
   quantity   Int
   transferId String?
   orderId    String?
+  batchId    String?
   note       String?
   createdAt  DateTime     @default(now())
 
   branch   Branch         @relation(fields: [branchId], references: [id])
   product  Product        @relation(fields: [productId], references: [id])
   transfer StockTransfer? @relation(fields: [transferId], references: [id])
+  batch    StockBatch?    @relation(fields: [batchId], references: [id])
 
   @@index([branchId])
   @@index([productId])
   @@index([createdAt])
+}
+
+model StockBatch {
+  id          String    @id @default(cuid())
+  branchId    String
+  productId   String
+  variantId   String?
+  batchNumber String
+  expiryDate  DateTime?
+  quantity    Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  branch        Branch              @relation(fields: [branchId], references: [id])
+  product       Product             @relation(fields: [productId], references: [id])
+  transferItems StockTransferItem[]
+  movements     StockMovement[]
+
+  @@index([branchId])
+  @@index([productId])
+  @@index([expiryDate])
 }
