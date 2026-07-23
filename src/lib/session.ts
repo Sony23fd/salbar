@@ -5,7 +5,7 @@ export interface AdminSessionData {
   userId: string
   email: string
   name: string
-  role: "ADMIN" | "CARGO_ADMIN" | "DATAADMIN"
+  role: "ADMIN" | "CARGO_ADMIN" | "DATAADMIN" | "BRANCH_MANAGER"
   isLoggedIn: boolean
 }
 

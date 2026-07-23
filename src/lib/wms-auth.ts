@@ -1,15 +1,14 @@
-import { getServerSession } from "next-auth/next"
-import { authOptions } from "@/lib/auth"
+import { getSession } from "@/lib/session"
 import { db } from "@/lib/db"
 
 export async function getWmsUserContext() {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.email) {
+  const session = await getSession()
+  if (!session?.isLoggedIn || !session?.userId) {
     return { authorized: false, user: null }
   }
 
   const user = await db.user.findUnique({
-    where: { email: session.user.email },
+    where: { id: session.userId },
     select: {
       id: true,
       role: true,
