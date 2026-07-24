@@ -210,7 +210,7 @@ export default function StockCountPage() {
             Хаах
           </button>
           <h3 className="font-bold mb-2">Баркод сканнер</h3>
-          <BarcodeScanner onDetected={(code) => handleScan(code)} />
+          <BarcodeScanner onScan={(code) => handleScan(code)} />
         </div>
       )}
 
