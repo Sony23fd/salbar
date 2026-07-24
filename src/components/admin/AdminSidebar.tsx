@@ -65,7 +65,8 @@ const SIDEBAR_STRUCTURE: SidebarGroup[] = [
     label: "Каталог",
     items: [
       { name: "Барааны жагсаалт", url: "/admin/products", icon: Package, roles: ["ADMIN"] },
-      { name: "Ангилал & Төрөл", url: "/admin/categories", icon: ListFilter, roles: ["ADMIN"] }
+      { name: "Ангилал & Төрөл", url: "/admin/categories", icon: ListFilter, roles: ["ADMIN"] },
+      { name: "Баркод хэвлэх", url: "/admin/products/print-barcodes", icon: Package, roles: ["ADMIN"] }
     ]
   },
   {
@@ -74,6 +75,8 @@ const SIDEBAR_STRUCTURE: SidebarGroup[] = [
     items: [
       { name: "Салбарууд", url: "/admin/branches", icon: Building2, roles: ["ADMIN"] },
       { name: "Үлдэгдэл", url: "/admin/inventory", icon: Boxes, roles: ["ADMIN", "CARGO_ADMIN"] },
+      { name: "Байршил & Тавиур", url: "/admin/inventory/bins", icon: Boxes, roles: ["ADMIN", "CARGO_ADMIN"] },
+      { name: "Тооллого", url: "/admin/inventory/count", icon: Boxes, roles: ["ADMIN", "CARGO_ADMIN"] },
       { name: "Шилжүүлэг", url: "/admin/transfers", icon: ArrowRightLeft, roles: ["ADMIN", "CARGO_ADMIN"] }
     ]
   },
@@ -101,7 +104,7 @@ const SIDEBAR_STRUCTURE: SidebarGroup[] = [
       { name: "Төлбөрийн тохиргоо", url: "/admin/settings/payment", icon: CreditCard, roles: ["ADMIN"] },
       { name: "Карго тохиргоо", url: "/admin/cargo-settings", icon: Truck, roles: ["CARGO_ADMIN"] },
       { name: "Админ хэрэглэгчид", url: "/admin/users", icon: ShieldCheck, roles: ["ADMIN", "DATAADMIN"] },
-      { name: "Үйлдлийн лог", url: "/admin/activity", icon: Database, roles: ["ADMIN", "DATAADMIN"] },
+      { name: "Үйлдлийн лог", url: "/admin/analytics/audit", icon: Database, roles: ["ADMIN", "DATAADMIN"] },
       { name: "Гарын авлага", url: "/admin/guide", icon: BookOpen, roles: ["ADMIN", "CARGO_ADMIN"] }
     ]
   }
