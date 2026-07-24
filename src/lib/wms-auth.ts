@@ -11,6 +11,7 @@ export async function getWmsUserContext() {
     where: { id: session.userId },
     select: {
       id: true,
+      name: true,
       role: true,
       branchId: true,
       canViewOtherBranches: true
