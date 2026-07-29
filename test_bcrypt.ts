@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 async function test() {
   const hash = "$2b$10$Epz0oN4hO3X5zY8A8R.5O.Xk7H/qF9OqHkZ1E/E8i2t9h1I9Y4Yq2";
