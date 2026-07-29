@@ -1,0 +1,6 @@
+{
+  "name": "Warehouse Management System",
+  "description": "Comprehensive WMS with role-based access control, inventory management, branch inactivity monitoring, order creation, and atomic delivery confirmation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

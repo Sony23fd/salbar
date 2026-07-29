@@ -1,0 +1,197 @@
+// ==========================================
+// Prisma Schema: Warehouse Management System
+// Database: PostgreSQL (Neon / Supabase)
+// ==========================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------
+// Enums
+// ------------------------------------------
+
+enum Role {
+  ADMIN
+  WAREHOUSE_WORKER
+  DELIVERY_DRIVER
+}
+
+enum BranchType {
+  BRANCH
+  CUSTOMER
+}
+
+enum TransactionType {
+  INBOUND
+  OUTBOUND
+  ADJUSTMENT
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  PACKED
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+}
+
+// ------------------------------------------
+// User & Auth
+// ------------------------------------------
+
+model User {
+  id              String         @id @default(cuid())
+  name            String
+  email           String         @unique
+  password        String         @default("$2b$10$Epz0oN4hO3X5zY8A8R.5O.Xk7H/qF9OqHkZ1E/E8i2t9h1I9Y4Yq2") // Default to "password123" for existing rows, though we'll update seed
+  role            Role           @default(WAREHOUSE_WORKER)
+  isActive        Boolean        @default(true)
+  createdOrders        Order[]                @relation("OrderCreator")
+  deliveredOrders      Order[]                @relation("OrderDriver")
+  historyLogs          OrderHistory[]         @relation("HistoryUser")
+  inventoryTransactions InventoryTransaction[]
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  @@map("users")
+}
+
+// ------------------------------------------
+// Branch Entity
+// ------------------------------------------
+
+model Branch {
+  id             String    @id @default(cuid())
+  name           String
+  location       String
+  contactPerson  String
+  email          String
+  phone          String
+  type           BranchType @default(BRANCH)
+  isActive       Boolean    @default(true)
+  lastActivityAt DateTime  @default(now())
+  orders         Order[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("branches")
+}
+
+// ------------------------------------------
+// Category & Product Inventory
+// ------------------------------------------
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  isActive    Boolean   @default(true)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("categories")
+}
+
+model Product {
+  id            String      @id @default(cuid())
+  sku           String      @unique
+  name          String
+  description   String?
+  unitPrice     Decimal     @db.Decimal(10, 2)
+  stockQuantity Int         @default(0)
+  minStockLevel Int         @default(5)
+  isActive      Boolean     @default(true)
+  
+  categoryId    String?
+  category      Category?              @relation(fields: [categoryId], references: [id])
+  orderItems    OrderItem[]
+  transactions  InventoryTransaction[]
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  @@map("products")
+}
+
+// ------------------------------------------
+// Inventory Transactions (History/Audit)
+// ------------------------------------------
+
+model InventoryTransaction {
+  id            String          @id @default(cuid())
+  productId     String
+  product       Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type          TransactionType
+  quantity      Int
+  previousStock Int
+  newStock      Int
+  userId        String
+  user          User            @relation(fields: [userId], references: [id])
+  referenceId   String?         // Optional reference like Order Number
+  notes         String?
+  createdAt     DateTime        @default(now())
+
+  @@map("inventory_transactions")
+}
+
+// ------------------------------------------
+// Order & Items
+// ------------------------------------------
+
+model Order {
+  id            String         @id @default(cuid())
+  orderNumber   String         @unique
+  branchId      String
+  branch        Branch         @relation(fields: [branchId], references: [id])
+  status        OrderStatus    @default(PENDING)
+  totalAmount   Decimal        @db.Decimal(10, 2)
+  createdById   String
+  createdBy     User           @relation("OrderCreator", fields: [createdById], references: [id])
+  deliveredById String?
+  deliveredBy   User?          @relation("OrderDriver", fields: [deliveredById], references: [id])
+  deliveredAt   DateTime?
+  items         OrderItem[]
+  history       OrderHistory[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitPrice Decimal  @db.Decimal(10, 2)
+  totalPrice Decimal @db.Decimal(10, 2)
+
+  @@map("order_items")
+}
+
+// ------------------------------------------
+// Audit Trail & Detailed History Log
+// ------------------------------------------
+
+model OrderHistory {
+  id            String      @id @default(cuid())
+  orderId       String
+  order         Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  changedById   String
+  changedBy     User        @relation("HistoryUser", fields: [changedById], references: [id])
+  status        OrderStatus
+  notes         String?
+  itemsSnapshot String      // JSON string of items & quantities at transition time
+  createdAt     DateTime    @default(now())
+
+  @@map("order_histories")
+}
