@@ -36,7 +36,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
           <div className="w-16 h-16 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center shadow-lg mb-4">
             <Building2 className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Apex Logistics WMS</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight">НОМАД ПРЕМИУМ ФҮҮДС</h1>
           <p className="text-sm text-slate-400 mt-2 font-medium">Агуулахын удирдлагын систем</p>
         </div>
 
@@ -95,16 +95,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             </button>
           </form>
 
-          {/* Test Accounts Info */}
-          <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">Туршилтын хаягууд</p>
-            <div className="space-y-2 text-xs text-slate-500 font-mono">
-              <div>Admin: <span className="font-bold text-slate-700">sarah.jenkins@wms.logistics.io</span></div>
-              <div>Worker: <span className="font-bold text-slate-700">carlos.ruiz@wms.logistics.io</span></div>
-              <div>Driver: <span className="font-bold text-slate-700">david.miller@wms.logistics.io</span></div>
-              <div className="pt-1 text-[10px] text-blue-600 font-sans font-medium">Бүгд ижил нууц үгтэй: <b>password123</b></div>
-            </div>
-          </div>
+
         </div>
 
       </div>
