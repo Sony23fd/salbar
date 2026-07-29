@@ -8,11 +8,10 @@ import rateLimit from 'express-rate-limit';
 
 dotenv.config();
 
-if (!process.env.JWT_SECRET) {
-  console.error("FATAL ERROR: JWT_SECRET is not defined in environment variables.");
-  process.exit(1);
+const JWT_SECRET = process.env.JWT_SECRET || 'MISSING_SECRET';
+if (JWT_SECRET === 'MISSING_SECRET') {
+  console.error("FATAL ERROR: JWT_SECRET is not defined in environment variables. Authentication will fail.");
 }
-const JWT_SECRET = process.env.JWT_SECRET;
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const APP_URL = process.env.APP_URL || 'http://localhost:3000';
@@ -48,6 +47,9 @@ const authenticate = (roles?: string[]) => {
 
     const token = authHeader.split(' ')[1];
     try {
+      if (JWT_SECRET === 'MISSING_SECRET') {
+        return res.status(500).json({ error: 'Server configuration error: Missing JWT_SECRET' });
+      }
       const decoded = jwt.verify(token, JWT_SECRET) as { id: string; role: string; name: string };
       req.user = decoded;
 
@@ -80,6 +82,10 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    if (JWT_SECRET === 'MISSING_SECRET') {
+      return res.status(500).json({ error: 'Server configuration error: Missing JWT_SECRET' });
     }
 
     const token = jwt.sign(
