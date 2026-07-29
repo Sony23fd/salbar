@@ -34,6 +34,7 @@ model User {
   createdTransfers     StockTransfer[] @relation("TransferCreator")
   createdCounts        StockCount[]    @relation("CountCreator")
   approvedCounts       StockCount[]    @relation("CountApprover")
+  recordedProductions  ProductionBatch[]
 
   @@index([role])
   @@index([branchId])
@@ -96,6 +97,7 @@ model Product {
   stockMovements          StockMovement[]
   batches                 StockBatch[]
   StockCountItem          StockCountItem[]
+  productionBatches       ProductionBatch[]
 
   @@index([status])
   @@index([categoryId])
@@ -120,6 +122,7 @@ model ProductVariant {
   inventories    Inventory[]
   transferItems  StockTransferItem[]
   StockCountItem StockCountItem[]
+  productionBatches ProductionBatch[]
 
   @@index([productId])
 }
@@ -184,9 +187,12 @@ model Order {
   loyaltyPointsUsed     Int            @default(0)
   referralRewardUsed    Int            @default(0)
   customerEmail         String?
+  clientId              String?
   branchId              String?
+  paymentStatus         PaymentStatus  @default(PENDING)
   branch                Branch?        @relation(fields: [branchId], references: [id])
   user                  User?          @relation(fields: [userId], references: [id])
+  client                B2BClient?     @relation(fields: [clientId], references: [id])
   items                 OrderItem[]
   payments              Payment[]
 
@@ -209,6 +215,7 @@ model OrderItem {
   sku             String
   quantity        Int
   unitPrice       Decimal
+  customPrice     Decimal?
   totalPrice      Decimal
   selectedOptions Json?
   createdAt       DateTime @default(now())
@@ -397,6 +404,8 @@ enum PaymentStatus {
   PAID
   FAILED
   REFUNDED
+  PARTIAL
+  CREDIT
 }
 
 enum SectionType {
@@ -671,4 +680,64 @@ model StockCountItem {
 
   @@index([stockCountId])
   @@index([productId])
+}
+
+model PriceTier {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  discountPct Decimal  @default(0) // Default discount percentage for this tier
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  clients     B2BClient[]
+}
+
+model B2BClient {
+  id              String   @id @default(cuid())
+  companyName     String
+  registryNumber  String?  @unique
+  contactPerson   String?
+  phoneNumber     String?
+  email           String?
+  address         String?
+  deliveryRegion  String?
+  creditLimit     Decimal  @default(0)
+  priceTierId     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  priceTier       PriceTier? @relation(fields: [priceTierId], references: [id])
+  orders          Order[]
+
+  @@index([priceTierId])
+}
+
+enum ProductionStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model ProductionBatch {
+  id               String   @id @default(cuid())
+  batchNumber      String   @unique
+  productId        String
+  variantId        String?
+  quantity         Int
+  cost             Decimal?
+  manufacturedDate DateTime?
+  expiryDate       DateTime?
+  status           ProductionStatus @default(PENDING)
+  recordedById     String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  product          Product         @relation(fields: [productId], references: [id])
+  variant          ProductVariant? @relation(fields: [variantId], references: [id])
+  recordedBy       User?           @relation(fields: [recordedById], references: [id])
+
+  @@index([productId])
+  @@index([status])
 }

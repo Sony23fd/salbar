@@ -56,16 +56,19 @@ const SIDEBAR_STRUCTURE: SidebarGroup[] = [
     id: "sales",
     label: "Борлуулалт",
     items: [
-      { name: "Бүх захиалга", url: "/admin/orders", icon: ShoppingCart, roles: ["ADMIN", "CARGO_ADMIN"] },
+      { name: "B2B Захиалгууд", url: "/admin/b2b-orders", icon: ShoppingCart, roles: ["ADMIN", "CARGO_ADMIN"] },
+      { name: "Шинэ B2B Захиалга", url: "/admin/b2b-orders/new", icon: ShoppingCart, roles: ["ADMIN", "CARGO_ADMIN"] },
+      { name: "Вэб захиалга", url: "/admin/orders", icon: ShoppingCart, roles: ["ADMIN", "CARGO_ADMIN"] },
       { name: "Буцаалт & Цуцлалт", url: "/admin/orders/returns", icon: Undo2, roles: ["ADMIN", "CARGO_ADMIN"] }
     ]
   },
   {
     id: "catalog",
-    label: "Каталог",
+    label: "Каталог & Үйлдвэрлэл",
     items: [
+      { name: "Үйлдвэрлэлийн орлого", url: "/admin/production", icon: Package, roles: ["ADMIN", "CARGO_ADMIN"] },
       { name: "Барааны жагсаалт", url: "/admin/products", icon: Package, roles: ["ADMIN"] },
-      { name: "Ангилал & Төрөл", url: "/admin/categories", icon: ListFilter, roles: ["ADMIN"] },
+      { name: "Ангилал & Брэнд", url: "/admin/categories", icon: ListFilter, roles: ["ADMIN"] },
       { name: "Баркод хэвлэх", url: "/admin/products/print-barcodes", icon: Package, roles: ["ADMIN"] }
     ]
   },
@@ -84,8 +87,9 @@ const SIDEBAR_STRUCTURE: SidebarGroup[] = [
     id: "customers",
     label: "Харилцагч",
     items: [
+      { name: "B2B Харилцагчид", url: "/admin/clients", icon: Users, roles: ["ADMIN"] },
       { name: "Хэрэглэгчид", url: "/admin/customers", icon: Users, roles: ["ADMIN"] },
-      { name: "Хөнгөлөлтийн карт", url: "/admin/customers/loyalty-cards", icon: CreditCardIcon, roles: ["ADMIN"] }
+      { name: "Лоялти картууд", url: "/admin/customers/loyalty-cards", icon: CreditCardIcon, roles: ["ADMIN"] }
     ]
   },
   {
