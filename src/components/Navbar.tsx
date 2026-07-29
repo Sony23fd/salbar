@@ -88,7 +88,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
           <div>
             <h1 className="text-lg font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
-              Апекс Логистик WMS
+              НОМАД ПРЕМИУМ ФҮҮДС
             </h1>
             <p className="text-xs text-slate-500 font-medium">Агуулах ба Салбар хоорондын удирдлагын систем</p>
           </div>

@@ -64,7 +64,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <Building2 className="w-5 h-5" />
             </div>
             <div className="flex flex-col">
-              <span className="text-white font-bold tracking-tight text-sm">Апекс Логистик WMS</span>
+              <span className="text-white font-bold tracking-tight text-sm">НОМАД ПРЕМИУМ ФҮҮДС</span>
               <span className="text-[10px] text-slate-400 font-medium">Удирдлагын систем</span>
             </div>
           </div>
