@@ -49,7 +49,7 @@ export async function createOrder(
 
     return {
       success: true,
-      message: `Order #${order.orderNumber} created successfully for ${order.branchName} (Total: $${order.totalAmount.toFixed(2)}).`,
+      message: `Order #${order.orderNumber} created successfully for ${order.branchName || ''} (Total: ₮${Number(order.totalAmount).toLocaleString()}).`,
       data: order,
     };
   } catch (error: any) {
