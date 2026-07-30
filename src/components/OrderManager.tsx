@@ -167,46 +167,72 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
         )}
       </div>
 
-      {/* Search & Filters Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Захиалгын № эсвэл салбарын нэрээр хайх..."
-            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
-          />
+      {/* Status Tabs */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 -mb-2 hide-scrollbar">
+          <button
+            onClick={() => setStatusFilter('ALL')}
+            className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              statusFilter === 'ALL'
+                ? 'bg-slate-900 text-white shadow-md'
+                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+            }`}
+          >
+            Бүгд <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'ALL' ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>{orders.length}</span>
+          </button>
+          
+          {(['PENDING', 'PROCESSING', 'PACKED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED'] as OrderStatus[]).map((status) => {
+            const count = orders.filter((o) => o.status === status).length;
+            const isActive = statusFilter === status;
+            
+            return (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  isActive
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+                }`}
+              >
+                {statusTranslations[status]}
+                {count > 0 && (
+                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${isActive ? 'bg-blue-700 text-blue-100' : 'bg-blue-50 text-blue-600 font-extrabold'}`}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
-        <div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-xs font-medium"
-          >
-            <option value="ALL">Бүх төлөв ({orders.length})</option>
-            <option value="PENDING">Хүлээгдэж буй</option>
-            <option value="PACKED">Савлагдсан</option>
-            <option value="IN_TRANSIT">Тээвэрлэлтэд</option>
-            <option value="DELIVERED">Хүргэгдсэн</option>
-          </select>
-        </div>
+        {/* Search & Branch Filter */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Захиалгын № эсвэл салбарын нэрээр хайх..."
+              className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+            />
+          </div>
 
-        <div>
-          <select
-            value={branchFilter}
-            onChange={(e) => setBranchFilter(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-xs font-medium"
-          >
-            <option value="ALL">Бүх салбар</option>
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
+          <div>
+            <select
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-xs font-medium"
+            >
+              <option value="ALL">Бүх салбар</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
