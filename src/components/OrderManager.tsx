@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Order, Branch, Product, User, OrderStatus } from '../types/wms';
 import { createOrder } from '../actions/order';
 import { db } from '../lib/db';
-import { ShoppingCart, Plus, Search, Filter, Truck, CheckCircle2, AlertTriangle, ShieldAlert, Clock, ChevronRight, Package, MapPin, X, Trash2 } from 'lucide-react';
+import { ShoppingCart, Plus, Search, Filter, Truck, CheckCircle2, AlertTriangle, ShieldAlert, Clock, ChevronRight, Package, MapPin, X, Trash2, Settings, History } from 'lucide-react';
 
 interface OrderManagerProps {
   orders: Order[];
@@ -42,6 +42,12 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Admin Status Modal state
+  const [statusModalOrder, setStatusModalOrder] = useState<Order | null>(null);
+  const [adminStatus, setAdminStatus] = useState<OrderStatus>('PENDING');
+  const [adminNotes, setAdminNotes] = useState('');
+  const [isAdminSubmitting, setIsAdminSubmitting] = useState(false);
 
   // Status Badge Styling
   const statusBadges: Record<OrderStatus, string> = {
@@ -137,6 +143,21 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
     } catch (e) {
       console.error(e);
       alert('Алдаа гарлаа');
+    }
+  };
+
+  const handleAdminStatusSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!statusModalOrder) return;
+    setIsAdminSubmitting(true);
+    try {
+      await db.changeOrderStatus(statusModalOrder.id, adminStatus, activeUser.id, adminNotes);
+      setStatusModalOrder(null);
+      onRefresh();
+    } catch (err: any) {
+      alert(err.message || 'Төлөв өөрчлөх үед алдаа гарлаа.');
+    } finally {
+      setIsAdminSubmitting(false);
     }
   };
 
@@ -254,7 +275,7 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
             return (
               <div
                 key={ord.id}
-                className="bg-white border border-slate-200 hover:border-slate-300 rounded-2xl p-5 transition-all space-y-4 shadow-xs"
+                className={`bg-white border border-slate-200 hover:border-slate-300 rounded-2xl p-5 transition-all space-y-4 shadow-xs ${ord.status === 'CANCELLED' ? 'opacity-60 grayscale-[50%]' : ''}`}
               >
                 {/* Top Row */}
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
@@ -344,6 +365,21 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
                       <Truck className="w-3.5 h-3.5" />
                       {ord.status === 'DELIVERED' ? 'Хүргэлт & Аудит харах' : 'Хүргэлт баталгаажуулах'}
                     </button>
+
+                    {/* Admin Status Manage */}
+                    {activeUser.role === 'ADMIN' && (
+                      <button
+                        onClick={() => {
+                          setStatusModalOrder(ord);
+                          setAdminStatus(ord.status);
+                          setAdminNotes('');
+                        }}
+                        className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors border border-transparent hover:border-slate-200"
+                        title="Төлөв өөрчлөх"
+                      >
+                        <Settings className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -351,6 +387,104 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
           })
         )}
       </div>
+
+      {/* Modal: Admin Status Management */}
+      {statusModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl my-8 animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Settings className="w-5 h-5 text-slate-500" /> Төлөв удирдах
+              </h3>
+              <button onClick={() => setStatusModalOrder(null)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAdminStatusSubmit} className="p-6 space-y-5">
+              <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-xl text-amber-800 text-xs font-medium flex gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="block mb-1 text-amber-900">Анхааруулга:</strong>
+                  Төлвийг хүчээр өөрчлөх нь агуулахын үлдэгдэлд шууд нөлөөлөхгүй (Хүргэгдсэнээс бусад тохиолдолд) тул маш анхааралтай хийнэ үү.
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Захиалгын төлөв</label>
+                <select
+                  value={adminStatus}
+                  onChange={(e) => setAdminStatus(e.target.value as OrderStatus)}
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-medium"
+                >
+                  {(Object.keys(statusTranslations) as OrderStatus[]).map((st) => (
+                    <option key={st} value={st}>
+                      {statusTranslations[st]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Тэмдэглэл / Шалтгаан *</label>
+                <textarea
+                  value={adminNotes}
+                  onChange={(e) => setAdminNotes(e.target.value)}
+                  placeholder="Төлөв албадан өөрчилсөн шалтгаанаа энд бичнэ үү..."
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-3 text-xs text-slate-900 min-h-[80px]"
+                  required
+                />
+              </div>
+
+              {/* Order History (Audit Trail) */}
+              {statusModalOrder.history && statusModalOrder.history.length > 0 && (
+                <div className="border-t border-slate-100 pt-4 mt-2">
+                  <h4 className="text-xs font-bold text-slate-700 mb-3 flex items-center gap-1.5">
+                    <History className="w-3.5 h-3.5 text-slate-400" /> Төлөвийн түүх
+                  </h4>
+                  <div className="space-y-3 max-h-40 overflow-y-auto pr-2">
+                    {statusModalOrder.history.map((hist, idx) => (
+                      <div key={idx} className="flex gap-3 text-xs relative">
+                        {idx !== statusModalOrder.history!.length - 1 && (
+                          <div className="absolute left-1 top-4 bottom-[-12px] w-0.5 bg-slate-100" />
+                        )}
+                        <div className="w-2 h-2 rounded-full bg-blue-400 mt-1 relative z-10 shrink-0" />
+                        <div className="flex-1 pb-1">
+                          <div className="flex items-center justify-between">
+                            <strong className="text-slate-800">{statusTranslations[hist.status]}</strong>
+                            <span className="text-[10px] text-slate-400">
+                              {new Date(hist.createdAt).toLocaleString('mn-MN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <div className="text-slate-500 mt-0.5">{hist.notes}</div>
+                          <div className="text-[10px] text-slate-400 mt-0.5">Үүсгэсэн: {hist.changedByName}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setStatusModalOrder(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200"
+                >
+                  Болих
+                </button>
+                <button
+                  type="submit"
+                  disabled={isAdminSubmitting || (adminStatus === statusModalOrder.status && !adminNotes)}
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white disabled:opacity-50"
+                >
+                  {isAdminSubmitting ? 'Хадгалж байна...' : 'Хадгалах'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Modal: Create Branch Requisition */}
       {showCreateModal && (
