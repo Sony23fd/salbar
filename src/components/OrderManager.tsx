@@ -132,7 +132,7 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
 
   const handleAdvanceStatus = async (orderId: string, nextStatus: OrderStatus) => {
     try {
-      await db.updateOrderStatus(orderId, nextStatus, activeUser.id, `Төлөв шинэчлэгдсэн: ${nextStatus}`);
+      await db.changeOrderStatus(orderId, nextStatus, activeUser.id, `Төлөв шинэчлэгдсэн: ${nextStatus}`);
       onRefresh();
     } catch (e) {
       console.error(e);
