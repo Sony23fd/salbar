@@ -314,7 +314,7 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
               )}
             </div>
           ) : (
-            <OrderHistoryTimeline historyLogs={order.history} currentStatus={order.status} />
+            <OrderHistoryTimeline historyLogs={order.history} currentStatus={order.status} products={allProducts} />
           )}
         </div>
       </div>

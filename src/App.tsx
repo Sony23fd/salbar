@@ -212,7 +212,7 @@ export default function App() {
               <ReportsManager />
             )}
 
-            {activeTab === 'audit' && currentUser.role === 'ADMIN' && <AuditLogExplorer orders={orders} />}
+            {activeTab === 'audit' && currentUser.role === 'ADMIN' && <AuditLogExplorer orders={orders} products={products} />}
           </div>
         </main>
       </div>

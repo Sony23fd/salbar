@@ -1,15 +1,17 @@
 import React from 'react';
-import { OrderHistory, Role, OrderStatus } from '../types/wms';
+import { OrderHistory, Role, OrderStatus, Product } from '../types/wms';
 import { CheckCircle2, Clock, User, Package, ShieldCheck, AlertCircle, Truck, FileText, History } from 'lucide-react';
 
 interface OrderHistoryTimelineProps {
   historyLogs: OrderHistory[];
   currentStatus: OrderStatus;
+  products?: Product[];
 }
 
 export const OrderHistoryTimeline: React.FC<OrderHistoryTimelineProps> = ({
   historyLogs,
   currentStatus,
+  products
 }) => {
   const statusColors: Record<OrderStatus, string> = {
     PENDING: 'bg-amber-50 text-amber-800 border-amber-200',
@@ -131,11 +133,14 @@ export const OrderHistoryTimeline: React.FC<OrderHistoryTimelineProps> = ({
                 {itemsSnapshotList.length > 0 && (
                   <div className="text-[11px] text-slate-500 pt-1 border-t border-slate-100 flex items-center gap-2 flex-wrap">
                     <span className="text-slate-400 font-medium">Барааны snapshot:</span>
-                    {itemsSnapshotList.map((item, i) => (
-                      <span key={i} className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800 font-mono text-[10px] border border-slate-200">
-                        {item.sku} (x{item.qty || item.quantity})
-                      </span>
-                    ))}
+                    {itemsSnapshotList.map((item, i) => {
+                      const prod = products?.find(p => p.sku === item.sku);
+                      return (
+                        <span key={i} className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800 font-mono text-[10px] border border-slate-200" title={prod?.name || 'Тодорхойгүй бараа'}>
+                          {prod ? prod.name : item.sku} (x{item.qty || item.quantity})
+                        </span>
+                      );
+                    })}
                   </div>
                 )}
               </div>

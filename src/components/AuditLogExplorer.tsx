@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { Order, OrderHistory, Role, OrderStatus } from '../types/wms';
-import { History, Search, Filter, ShieldCheck, User, Clock, FileText, Code2, Eye } from 'lucide-react';
+import { Order, OrderHistory, Role, OrderStatus, Product } from '../types/wms';
+import { History, Search, Filter, ShieldCheck, User, Clock, FileText, Code2, Eye, Package } from 'lucide-react';
 
 interface AuditLogExplorerProps {
   orders: Order[];
+  products: Product[];
 }
 
-export const AuditLogExplorer: React.FC<AuditLogExplorerProps> = ({ orders }) => {
+export const AuditLogExplorer: React.FC<AuditLogExplorerProps> = ({ orders, products }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSnapshot, setSelectedSnapshot] = useState<{ title: string; json: string } | null>(null);
 
@@ -195,10 +196,52 @@ export const AuditLogExplorer: React.FC<AuditLogExplorerProps> = ({ orders }) =>
               </button>
             </div>
 
-            <div className="p-6">
-              <pre className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-xs font-mono text-emerald-400 overflow-x-auto">
-                {JSON.stringify(JSON.parse(selectedSnapshot.json || '[]'), null, 2)}
-              </pre>
+            <div className="p-0">
+              <div className="max-h-[60vh] overflow-y-auto p-2">
+                {(() => {
+                  try {
+                    const items = JSON.parse(selectedSnapshot.json || '[]');
+                    if (!items || items.length === 0) {
+                      return <div className="p-4 text-center text-slate-500 text-xs">Барааны мэдээлэл байхгүй байна.</div>;
+                    }
+                    return (
+                      <div className="space-y-2">
+                        {items.map((item: any, idx: number) => {
+                          const prod = products.find(p => p.sku === item.sku);
+                          return (
+                            <div key={idx} className="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-xl hover:bg-slate-50 transition-colors">
+                              <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                                <Package className="w-4 h-4" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-bold text-slate-900 text-sm truncate">
+                                  {prod ? prod.name : 'Тодорхойгүй бараа'}
+                                </div>
+                                <div className="text-[11px] font-mono text-slate-500 mt-0.5">
+                                  {item.sku}
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <div className="text-sm font-black text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg">
+                                  x{item.qty || item.quantity}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  } catch (e) {
+                    return (
+                      <div className="p-6">
+                        <pre className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-xs font-mono text-emerald-400 overflow-x-auto">
+                          {selectedSnapshot.json}
+                        </pre>
+                      </div>
+                    );
+                  }
+                })()}
+              </div>
             </div>
           </div>
         </div>
