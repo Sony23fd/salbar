@@ -185,11 +185,11 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ currentUser, allUsers 
         </div>
       ) : viewMode === 'KANBAN' ? (
         /* Kanban View */
-        <div className="flex overflow-x-auto pb-4 gap-6 snap-x">
+        <div className="flex pb-4 gap-4 sm:gap-6 overflow-x-auto min-h-[500px]">
           {columns.map(col => {
             const colTasks = filteredTasks.filter(t => t.status === col.id);
             return (
-              <div key={col.id} className={`flex-shrink-0 w-80 bg-slate-50/50 rounded-2xl border ${col.color} flex flex-col max-h-[70vh] snap-start`}>
+              <div key={col.id} className={`flex-1 min-w-[250px] max-w-[400px] bg-slate-50/50 rounded-2xl border ${col.color} flex flex-col max-h-[75vh]`}>
                 <div className="p-4 border-b border-slate-200/50 flex items-center justify-between bg-white/50 rounded-t-2xl">
                   <h3 className="font-bold text-sm text-slate-800">{col.label}</h3>
                   <span className="bg-white text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-200 shadow-sm">

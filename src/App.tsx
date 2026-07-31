@@ -143,7 +143,7 @@ export default function App() {
 
         {/* Scrollable Page Content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto">
+          <div className={activeTab === 'tasks' ? 'w-full' : 'max-w-7xl mx-auto'}>
             {activeTab === 'dashboard' && currentUser.role !== 'DELIVERY_DRIVER' && (
               <AdminDashboard
                 orders={orders}
