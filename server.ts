@@ -656,7 +656,7 @@ app.get('/api/tasks', authenticate(), async (req, res) => {
   }
 });
 
-app.post('/api/tasks', authenticateToken, async (req: AuthRequest, res: Response) => {
+app.post('/api/tasks', authenticate(), async (req: Request, res: Response) => {
   try {
     const { title, description, priority, assigneeId, dueDate, branchId, productId, orderId, subtasks, attachments } = req.body;
     const task = await prisma.task.create({
@@ -686,7 +686,7 @@ app.post('/api/tasks', authenticateToken, async (req: AuthRequest, res: Response
   }
 });
 
-app.put('/api/tasks/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
+app.put('/api/tasks/:id', authenticate(), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { status, title, description, priority, assigneeId, dueDate, subtasks, attachments } = req.body;
