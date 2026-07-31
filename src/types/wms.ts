@@ -137,3 +137,34 @@ export interface InactiveBranchAlert {
   email: string;
   phone: string;
 }
+
+export type TaskPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE';
+
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  userId: string;
+  user?: User;
+  content: string;
+  createdAt: string | Date;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  priority: TaskPriority;
+  status: TaskStatus;
+  dueDate?: string | Date;
+  assigneeId?: string;
+  assignee?: User;
+  creatorId: string;
+  creator?: User;
+  branchId?: string;
+  productId?: string;
+  orderId?: string;
+  comments?: TaskComment[];
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}

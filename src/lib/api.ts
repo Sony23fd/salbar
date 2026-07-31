@@ -243,5 +243,42 @@ export const api = {
         };
       })
       .sort((a, b) => b.daysInactive - a.daysInactive);
+  },
+
+  // Task API
+  async getTasks(): Promise<Task[]> {
+    const res = await fetch(`${API_BASE}/tasks`, { headers: getHeaders() });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async createTask(data: Partial<Task>): Promise<Task> {
+    const res = await fetch(`${API_BASE}/tasks`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async updateTask(id: string, data: Partial<Task>): Promise<Task> {
+    const res = await fetch(`${API_BASE}/tasks/${id}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async addTaskComment(id: string, content: string): Promise<TaskComment> {
+    const res = await fetch(`${API_BASE}/tasks/${id}/comments`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ content }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
   }
 };

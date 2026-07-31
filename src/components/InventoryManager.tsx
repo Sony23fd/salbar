@@ -3,7 +3,7 @@ import { Product, User } from '../types/wms';
 import { registerProduct, replenishStock } from '../actions/inventory';
 import { db } from '../lib/db';
 import { api } from '../lib/api';
-import { Package, Plus, RefreshCw, Search, AlertTriangle, CheckCircle2, ShieldAlert, Tag, DollarSign, Layers, X, Pencil } from 'lucide-react';
+import { Package, Search, Plus, RefreshCw, X, ShieldAlert, CheckCircle2, AlertTriangle, ArrowUpRight, ArrowDownRight, Hash, Tag, FileText, Banknote, History, ExternalLink, Pencil, AlertCircle, ClipboardList } from 'lucide-react';
 
 interface InventoryManagerProps {
   products: Product[];
@@ -197,6 +197,25 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
     }
   };
 
+  const handleCreateRestockTask = async (product: Product) => {
+    try {
+      setIsSubmitting(true);
+      await api.createTask({
+        title: `Татан авалт хийх: ${product.name} (${product.sku})`,
+        description: `Үлдэгдэл багассан тул яаралтай татан авалт хийх шаардлагатай байна.\nОдоогийн үлдэгдэл: ${product.stockQuantity}\nДоод хязгаар: ${product.minStockLevel}`,
+        priority: 'HIGH',
+        productId: product.id,
+      });
+      setFormSuccess(`${product.sku} бараанд татан авалтын даалгавар үүсгэлээ.`);
+      setTimeout(() => setFormSuccess(null), 3000);
+    } catch (err: any) {
+      setFormError(err.message || 'Даалгавар үүсгэхэд алдаа гарлаа.');
+      setTimeout(() => setFormError(null), 3000);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const canEdit = currentUser.role === 'ADMIN' || currentUser.role === 'WAREHOUSE_WORKER';
 
   return (
@@ -338,6 +357,16 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                             >
                               <RefreshCw className="w-3 h-3" /> Татан авалт
                             </button>
+                            {(isCritical || isLow) && currentUser.role === 'ADMIN' && (
+                              <button
+                                onClick={() => handleCreateRestockTask(prod)}
+                                disabled={isSubmitting}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors disabled:opacity-50"
+                                title="Татан авалтын даалгавар үүсгэх"
+                              >
+                                <ClipboardList className="w-3 h-3" /> Даалгавар өгөх
+                              </button>
+                            )}
                             {currentUser.role === 'ADMIN' && (
                               <button
                                 onClick={() => handleEditClick(prod)}

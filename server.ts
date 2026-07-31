@@ -637,6 +637,95 @@ app.put('/api/orders/:id/status', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'DE
   }
 });
 
+// ------------------------------------------
+// Task Management
+// ------------------------------------------
+app.get('/api/tasks', authenticate(), async (req, res) => {
+  try {
+    const tasks = await prisma.task.findMany({
+      include: {
+        assignee: { select: { id: true, name: true, role: true } },
+        creator: { select: { id: true, name: true, role: true } },
+        comments: { include: { user: { select: { id: true, name: true } } }, orderBy: { createdAt: 'desc' } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(tasks);
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
+
+app.post('/api/tasks', authenticate(), async (req, res) => {
+  const { title, description, priority, dueDate, assigneeId, branchId, productId, orderId } = req.body;
+  try {
+    const newTask = await prisma.task.create({
+      data: {
+        title,
+        description,
+        priority: priority || 'NORMAL',
+        status: 'TODO',
+        dueDate: dueDate ? new Date(dueDate) : null,
+        assigneeId: assigneeId || null,
+        creatorId: req.user!.id,
+        branchId,
+        productId,
+        orderId
+      },
+      include: {
+        assignee: { select: { id: true, name: true, role: true } },
+        creator: { select: { id: true, name: true, role: true } },
+        comments: true
+      }
+    });
+    res.json(newTask);
+  } catch (err) {
+    handleApiError(res, err, 400);
+  }
+});
+
+app.put('/api/tasks/:id', authenticate(), async (req, res) => {
+  const { id } = req.params;
+  const { status, assigneeId, priority, dueDate } = req.body;
+  try {
+    const updated = await prisma.task.update({
+      where: { id },
+      data: {
+        ...(status && { status }),
+        ...(assigneeId !== undefined && { assigneeId }),
+        ...(priority && { priority }),
+        ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null })
+      },
+      include: {
+        assignee: { select: { id: true, name: true, role: true } },
+        creator: { select: { id: true, name: true, role: true } },
+        comments: { include: { user: { select: { id: true, name: true } } }, orderBy: { createdAt: 'desc' } }
+      }
+    });
+    res.json(updated);
+  } catch (err) {
+    handleApiError(res, err, 400);
+  }
+});
+
+app.post('/api/tasks/:id/comments', authenticate(), async (req, res) => {
+  const { id } = req.params;
+  const { content } = req.body;
+  try {
+    const newComment = await prisma.taskComment.create({
+      data: {
+        taskId: id,
+        userId: req.user!.id,
+        content
+      },
+      include: { user: { select: { id: true, name: true } } }
+    });
+    res.json(newComment);
+  } catch (err) {
+    handleApiError(res, err, 400);
+  }
+});
+
 // Start Server conditionally (for local development)
 if (process.env.NODE_ENV !== 'production' && process.env.VERCEL_ENV !== 'production') {
   app.listen(3001, () => {

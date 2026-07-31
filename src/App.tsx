@@ -8,6 +8,7 @@ import { InventoryManager } from './components/InventoryManager';
 import { OrderManager } from './components/OrderManager';
 import { BranchManager } from './components/BranchManager';
 import { AuditLogExplorer } from './components/AuditLogExplorer';
+import { TaskManager } from './components/TaskManager';
 import { DeliveryModal } from './components/DeliveryModal';
 import { CategoryManager } from './components/CategoryManager';
 import { ReportsManager } from './components/ReportsManager';
@@ -155,6 +156,10 @@ export default function App() {
                 onQuickOrder={handleQuickOrderForBranch}
                 onSimulateActivity={handleSimulateActivity}
               />
+            )}
+
+            {activeTab === 'tasks' && (
+              <TaskManager currentUser={currentUser} allUsers={users} />
             )}
 
             {activeTab === 'inventory' && currentUser.role !== 'DELIVERY_DRIVER' && (

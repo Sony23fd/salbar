@@ -10,7 +10,6 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 // ------------------------------------------
@@ -43,6 +42,20 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
 // ------------------------------------------
 // User & Auth
 // ------------------------------------------
@@ -58,6 +71,11 @@ model User {
   deliveredOrders      Order[]                @relation("OrderDriver")
   historyLogs          OrderHistory[]         @relation("HistoryUser")
   inventoryTransactions InventoryTransaction[]
+  
+  createdTasks         Task[]                 @relation("TaskCreator")
+  assignedTasks        Task[]                 @relation("TaskAssignee")
+  taskComments         TaskComment[]
+  
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
 
@@ -195,4 +213,47 @@ model OrderHistory {
   createdAt     DateTime    @default(now())
 
   @@map("order_histories")
+}
+
+// ------------------------------------------
+// Task Management
+// ------------------------------------------
+
+model Task {
+  id            String       @id @default(cuid())
+  title         String
+  description   String?
+  priority      TaskPriority @default(NORMAL)
+  status        TaskStatus   @default(TODO)
+  dueDate       DateTime?
+  
+  assigneeId    String?
+  assignee      User?        @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  creatorId     String
+  creator       User         @relation("TaskCreator", fields: [creatorId], references: [id])
+  
+  // Optional links to existing entities for context
+  branchId      String?
+  productId     String?
+  orderId       String?
+
+  comments      TaskComment[]
+  
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@map("tasks")
+}
+
+model TaskComment {
+  id            String    @id @default(cuid())
+  taskId        String
+  task          Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  content       String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("task_comments")
 }

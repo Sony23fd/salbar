@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Branch, InactiveBranchAlert, User, BranchType } from '../types/wms';
 import { db } from '../lib/db';
-import { Building2, Clock, MapPin, Phone, Mail, AlertTriangle, CheckCircle2, ShoppingCart, ShieldAlert, Plus, X, Building, Users } from 'lucide-react';
+import { Building2, Clock, MapPin, Phone, Mail, AlertTriangle, CheckCircle2, ShoppingCart, ShieldAlert, Plus, X, Building, Users, ClipboardList } from 'lucide-react';
+import { api } from '../lib/api';
 
 interface BranchManagerProps {
   branches: Branch[];
@@ -60,9 +61,9 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
     setIsSubmitting(true);
     try {
       if (editingBranch) {
-        await db.updateBranch(editingBranch.id, { name, location, contactPerson, email, phone, type });
+        await api.updateBranch(editingBranch.id, { name, location, contactPerson, email, phone, type });
       } else {
-        await db.addBranch({ name, location, contactPerson, email, phone, type });
+        await api.createBranch({ name, location, contactPerson, email, phone, type });
       }
       onRefresh();
       closeModal();
@@ -80,6 +81,21 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
       onRefresh();
     } catch (err: any) {
       alert(err.message || 'Алдаа гарлаа');
+    }
+  };
+
+  const handleCreateContactTask = async (branch: Branch, days: number) => {
+    try {
+      await api.createTask({
+        title: `Салбартай холбогдох: ${branch.name}`,
+        description: `Салбар сүүлийн ${days} хоног идэвхгүй байна. Менежертэй холбогдож шалтгааныг тодруулах.\nУтас: ${branch.phone}\nМенежер: ${branch.contactPerson}`,
+        priority: 'HIGH',
+        branchId: branch.id,
+      });
+      alert(`${branch.name} салбартай холбогдох даалгавар үүсгэлээ.`);
+    } catch (err) {
+      console.error(err);
+      alert('Даалгавар үүсгэхэд алдаа гарлаа');
     }
   };
 
@@ -209,6 +225,15 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
                     >
                       Устгах
                     </button>
+                    {isInactive && (
+                      <button
+                        onClick={() => handleCreateContactTask(b, alertInfo?.daysInactive || 0)}
+                        className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition-colors inline-flex items-center gap-1"
+                        title="Холбогдох даалгавар үүсгэх"
+                      >
+                        <ClipboardList className="w-3 h-3" /> Даалгавар
+                      </button>
+                    )}
                   </div>
                 ) : <div />}
 
