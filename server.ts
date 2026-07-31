@@ -331,6 +331,26 @@ app.post('/api/products', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async (re
   }
 });
 
+app.put('/api/products/:id', authenticate(['ADMIN']), async (req, res) => {
+  try {
+    const data = req.body;
+    const updated = await prisma.product.update({
+      where: { id: req.params.id },
+      data: {
+        name: data.name,
+        description: data.description,
+        unitPrice: data.unitPrice,
+        minStockLevel: data.minStockLevel,
+        categoryId: data.categoryId || null
+      },
+      include: { category: true }
+    });
+    res.json(updated);
+  } catch (err) {
+    handleApiError(res, err, 400);
+  }
+});
+
 app.put('/api/products/:id/deactivate', authenticate(['ADMIN']), async (req, res) => {
   try {
     const updated = await prisma.product.update({

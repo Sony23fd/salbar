@@ -142,6 +142,16 @@ export const api = {
     return res.json();
   },
 
+  async updateProduct(id: string, product: Partial<Product>): Promise<Product> {
+    const res = await fetch(`${API_BASE}/products/${id}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(product),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
   async deactivateProduct(id: string): Promise<Product> {
     const res = await fetch(`${API_BASE}/products/${id}/deactivate`, {
       method: 'PUT',
