@@ -656,21 +656,22 @@ app.get('/api/tasks', authenticate(), async (req, res) => {
   }
 });
 
-app.post('/api/tasks', authenticate(), async (req, res) => {
-  const { title, description, priority, dueDate, assigneeId, branchId, productId, orderId } = req.body;
+app.post('/api/tasks', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const newTask = await prisma.task.create({
+    const { title, description, priority, assigneeId, dueDate, branchId, productId, orderId, subtasks, attachments } = req.body;
+    const task = await prisma.task.create({
       data: {
         title,
         description,
         priority: priority || 'NORMAL',
-        status: 'TODO',
-        dueDate: dueDate ? new Date(dueDate) : null,
-        assigneeId: assigneeId || null,
+        assigneeId,
         creatorId: req.user!.id,
+        dueDate: dueDate ? new Date(dueDate) : null,
         branchId,
         productId,
-        orderId
+        orderId,
+        subtasks,
+        attachments
       },
       include: {
         assignee: { select: { id: true, name: true, role: true } },
@@ -678,23 +679,28 @@ app.post('/api/tasks', authenticate(), async (req, res) => {
         comments: true
       }
     });
-    res.json(newTask);
-  } catch (err) {
-    handleApiError(res, err, 400);
+    res.status(201).json(task);
+  } catch (error) {
+    console.error('Create task error:', error);
+    res.status(500).json({ error: 'Failed to create task' });
   }
 });
 
-app.put('/api/tasks/:id', authenticate(), async (req, res) => {
-  const { id } = req.params;
-  const { status, assigneeId, priority, dueDate } = req.body;
+app.put('/api/tasks/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const updated = await prisma.task.update({
+    const { id } = req.params;
+    const { status, title, description, priority, assigneeId, dueDate, subtasks, attachments } = req.body;
+    const task = await prisma.task.update({
       where: { id },
       data: {
         ...(status && { status }),
-        ...(assigneeId !== undefined && { assigneeId }),
+        ...(title && { title }),
+        ...(description && { description }),
         ...(priority && { priority }),
-        ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null })
+        ...(assigneeId !== undefined && { assigneeId }),
+        ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
+        ...(subtasks !== undefined && { subtasks }),
+        ...(attachments !== undefined && { attachments })
       },
       include: {
         assignee: { select: { id: true, name: true, role: true } },
@@ -702,7 +708,7 @@ app.put('/api/tasks/:id', authenticate(), async (req, res) => {
         comments: { include: { user: { select: { id: true, name: true } } }, orderBy: { createdAt: 'desc' } }
       }
     });
-    res.json(updated);
+    res.json(task);
   } catch (err) {
     handleApiError(res, err, 400);
   }

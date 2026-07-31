@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { User, Task, TaskStatus, TaskPriority } from '../types/wms';
 import { api } from '../lib/api';
-import { ClipboardList, Plus, Search, Calendar, User as UserIcon, Clock, MessageSquare, AlertCircle, CheckCircle2, ChevronRight, LayoutGrid, List, X } from 'lucide-react';
+import { ClipboardList, Plus, Search, Calendar, User as UserIcon, Clock, MessageSquare, AlertCircle, CheckCircle2, ChevronRight, LayoutGrid, List, X, ExternalLink } from 'lucide-react';
 
 interface TaskManagerProps {
   currentUser: User;
   allUsers: User[];
   onRefresh?: () => void;
+  onNavigateTab?: (tab: string) => void;
 }
 
-export const TaskManager: React.FC<TaskManagerProps> = ({ currentUser, allUsers }) => {
+export const TaskManager: React.FC<TaskManagerProps> = ({ currentUser, allUsers, onNavigateTab }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'KANBAN' | 'LIST'>('KANBAN');
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterMode, setFilterMode] = useState<'ALL' | 'MY_TASKS' | 'URGENT'>('ALL');
   
   // Modal states
   const [showTaskModal, setShowTaskModal] = useState(false);
@@ -104,10 +106,33 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ currentUser, allUsers 
     }
   };
 
-  const filteredTasks = tasks.filter(t => 
-    t.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (t.description && t.description.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>, status: TaskStatus) => {
+    e.preventDefault();
+    const taskId = e.dataTransfer.getData('taskId');
+    if (taskId) {
+      handleUpdateStatus(taskId, status);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  };
+
+  const filteredTasks = tasks.filter(t => {
+    // Text search
+    const matchesSearch = t.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (t.description && t.description.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    // Quick filters
+    if (filterMode === 'MY_TASKS') {
+      return matchesSearch && t.assigneeId === currentUser.id;
+    }
+    if (filterMode === 'URGENT') {
+      return matchesSearch && (t.priority === 'URGENT' || t.priority === 'HIGH');
+    }
+    
+    return matchesSearch;
+  });
 
   const getPriorityColor = (p: TaskPriority) => {
     switch(p) {
@@ -168,15 +193,38 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ currentUser, allUsers 
         </div>
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Ажил хайх..."
-          className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-xs"
-        />
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Ажил хайх..."
+            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-xs"
+          />
+        </div>
+        
+        <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+          <button
+            onClick={() => setFilterMode('ALL')}
+            className={`whitespace-nowrap px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${filterMode === 'ALL' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+          >
+            Бүгд
+          </button>
+          <button
+            onClick={() => setFilterMode('MY_TASKS')}
+            className={`whitespace-nowrap px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${filterMode === 'MY_TASKS' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+          >
+            Миний ажил
+          </button>
+          <button
+            onClick={() => setFilterMode('URGENT')}
+            className={`whitespace-nowrap px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${filterMode === 'URGENT' ? 'bg-red-500 text-white' : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-100'}`}
+          >
+            Яаралтай
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -189,7 +237,12 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ currentUser, allUsers 
           {columns.map(col => {
             const colTasks = filteredTasks.filter(t => t.status === col.id);
             return (
-              <div key={col.id} className={`flex-1 min-w-[250px] max-w-[400px] bg-slate-50/50 rounded-2xl border ${col.color} flex flex-col max-h-[75vh]`}>
+              <div 
+                key={col.id} 
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, col.id)}
+                className={`flex-1 min-w-[250px] max-w-[400px] bg-slate-50/50 rounded-2xl border ${col.color} flex flex-col max-h-[75vh]`}
+              >
                 <div className="p-4 border-b border-slate-200/50 flex items-center justify-between bg-white/50 rounded-t-2xl">
                   <h3 className="font-bold text-sm text-slate-800">{col.label}</h3>
                   <span className="bg-white text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-200 shadow-sm">
@@ -200,8 +253,10 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ currentUser, allUsers 
                   {colTasks.map(task => (
                     <div 
                       key={task.id} 
+                      draggable
+                      onDragStart={(e) => e.dataTransfer.setData('taskId', task.id)}
                       onClick={() => setSelectedTask(task)}
-                      className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                      className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group active:cursor-grabbing"
                     >
                       <div className="flex items-start justify-between mb-2">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${getPriorityColor(task.priority)}`}>
@@ -368,6 +423,94 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ currentUser, allUsers 
                   </div>
                 </div>
 
+                {/* Subtasks (Checklist) */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Дэд ажлууд (Checklist)</h4>
+                  </div>
+                  <div className="space-y-2 mb-4">
+                    {selectedTask.subtasks ? (
+                      JSON.parse(selectedTask.subtasks).map((st: any, i: number) => (
+                        <div key={i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-colors">
+                          <input 
+                            type="checkbox" 
+                            checked={st.completed}
+                            onChange={async (e) => {
+                              const updated = JSON.parse(selectedTask.subtasks!);
+                              updated[i].completed = e.target.checked;
+                              const newStr = JSON.stringify(updated);
+                              await api.updateTask(selectedTask.id, { subtasks: newStr });
+                              setSelectedTask({ ...selectedTask, subtasks: newStr });
+                              fetchTasks();
+                            }}
+                            className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer"
+                          />
+                          <span className={`text-sm ${st.completed ? 'line-through text-slate-400' : 'text-slate-700'}`}>
+                            {st.title}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-slate-400 italic">Дэд ажил байхгүй байна.</p>
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-2 mb-8">
+                    <input 
+                      type="text" 
+                      id="newSubtaskInput"
+                      placeholder="Шинэ дэд ажил нэмэх (Enter дарна уу)" 
+                      className="flex-1 border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500"
+                      onKeyDown={async (e) => {
+                        if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                          const title = e.currentTarget.value.trim();
+                          const current = selectedTask.subtasks ? JSON.parse(selectedTask.subtasks) : [];
+                          current.push({ id: Date.now().toString(), title, completed: false });
+                          const newStr = JSON.stringify(current);
+                          await api.updateTask(selectedTask.id, { subtasks: newStr });
+                          setSelectedTask({ ...selectedTask, subtasks: newStr });
+                          fetchTasks();
+                          e.currentTarget.value = '';
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Attachments */}
+                <div>
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Хавсралтууд</h4>
+                  <div className="space-y-2 mb-4">
+                    {selectedTask.attachments ? (
+                      JSON.parse(selectedTask.attachments).map((att: any, i: number) => (
+                        <a key={i} href={att.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-2 rounded-xl">
+                          <ExternalLink className="w-4 h-4" /> {att.name}
+                        </a>
+                      ))
+                    ) : (
+                      <p className="text-xs text-slate-400 italic">Хавсралт алга.</p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const url = prompt('Хавсралтын холбоосыг оруулна уу (Жнь: Google Drive link):');
+                      if (url) {
+                        let name = prompt('Хавсралтын нэрийг оруулна уу:') || 'Хавсралт';
+                        const current = selectedTask.attachments ? JSON.parse(selectedTask.attachments) : [];
+                        current.push({ name, url });
+                        const newStr = JSON.stringify(current);
+                        await api.updateTask(selectedTask.id, { attachments: newStr });
+                        setSelectedTask({ ...selectedTask, attachments: newStr });
+                        fetchTasks();
+                      }
+                    }}
+                    className="text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    + Холбоос нэмэх
+                  </button>
+                </div>
+
                 <div>
                   <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Хэлэлцүүлэг & Үр дүн</h4>
                   <div className="space-y-4 mb-4">
@@ -445,6 +588,30 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ currentUser, allUsers 
                     </div>
                   </div>
                 </div>
+
+                {(selectedTask.branchId || selectedTask.productId) && (
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Холбоос</h4>
+                    <div className="space-y-2">
+                      {selectedTask.branchId && (
+                        <button 
+                          onClick={() => { setSelectedTask(null); onNavigateTab?.('branches'); }}
+                          className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl px-3 py-2 text-xs font-bold transition-colors flex items-center justify-between"
+                        >
+                          Салбарын мэдээлэл рүү очих <ChevronRight className="w-4 h-4" />
+                        </button>
+                      )}
+                      {selectedTask.productId && (
+                        <button 
+                          onClick={() => { setSelectedTask(null); onNavigateTab?.('inventory'); }}
+                          className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl px-3 py-2 text-xs font-bold transition-colors flex items-center justify-between"
+                        >
+                          Барааны мэдээлэл рүү очих <ChevronRight className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

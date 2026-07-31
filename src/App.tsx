@@ -159,7 +159,12 @@ export default function App() {
             )}
 
             {activeTab === 'tasks' && (
-              <TaskManager currentUser={currentUser} allUsers={users} />
+              <TaskManager
+                currentUser={currentUser}
+                allUsers={users}
+                onRefresh={reloadData}
+                onNavigateTab={setActiveTab}
+              />
             )}
 
             {activeTab === 'inventory' && currentUser.role !== 'DELIVERY_DRIVER' && (

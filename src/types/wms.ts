@@ -164,6 +164,8 @@ export interface Task {
   branchId?: string;
   productId?: string;
   orderId?: string;
+  subtasks?: string;
+  attachments?: string;
   comments?: TaskComment[];
   createdAt: string | Date;
   updatedAt: string | Date;

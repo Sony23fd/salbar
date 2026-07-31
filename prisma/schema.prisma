@@ -236,6 +236,10 @@ model Task {
   branchId      String?
   productId     String?
   orderId       String?
+  
+  // JSON strings for V2 features
+  subtasks      String?      // JSON array of { id, title, completed }
+  attachments   String?      // JSON array of { name, url, type }
 
   comments      TaskComment[]
   
