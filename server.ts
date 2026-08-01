@@ -199,6 +199,7 @@ app.post('/api/seed', async (req, res) => {
 app.get('/api/branches', authenticate(), async (req, res) => {
   const branches = await prisma.branch.findMany({
     where: { isActive: true },
+    include: { inventory: { include: { product: true } } },
     orderBy: { createdAt: 'asc' },
   });
   res.json(branches);

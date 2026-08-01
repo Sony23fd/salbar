@@ -32,7 +32,9 @@ export interface Branch {
   phone: string;
   type: BranchType;
   isActive: boolean;
-  lastActivityAt: string; // ISO date string
+  lastActivityAt: string | Date;
+  orders?: Order[];
+  inventory?: BranchInventory[];
   createdAt: string;
 }
 

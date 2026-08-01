@@ -20,10 +20,7 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
   currentUser,
 }) => {
   const [showModal, setShowModal] = useState(false);
-  const [showInventoryModal, setShowInventoryModal] = useState(false);
-  const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
-  const [branchInventory, setBranchInventory] = useState<any[]>([]);
-  const [inventoryLoading, setInventoryLoading] = useState(false);
+  const [expandedBranchId, setExpandedBranchId] = useState<string | null>(null);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
   
   // Form states
@@ -60,33 +57,14 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
     setShowModal(false);
   };
 
-  const openInventoryModal = async (branch: Branch) => {
-    setSelectedBranch(branch);
-    setShowInventoryModal(true);
-    setInventoryLoading(true);
-    try {
-      const inv = await api.getBranchInventory(branch.id);
-      setBranchInventory(inv);
-    } catch (err: any) {
-      alert(err.message || 'Үлдэгдэл татахад алдаа гарлаа');
-    } finally {
-      setInventoryLoading(false);
-    }
+  const toggleExpand = (id: string) => {
+    setExpandedBranchId(prev => (prev === id ? null : id));
   };
 
-  const closeInventoryModal = () => {
-    setShowInventoryModal(false);
-    setSelectedBranch(null);
-    setBranchInventory([]);
-  };
-
-  const handleAdjustInventory = async (productId: string, quantityToDeduct: number, type: 'SALE' | 'RETURN') => {
-    if (!selectedBranch) return;
+  const handleAdjustInventory = async (branchId: string, productId: string, quantityToDeduct: number, type: 'SALE' | 'RETURN') => {
     try {
-      await api.adjustBranchInventory(selectedBranch.id, { productId, quantityToDeduct, type });
-      // Refresh inventory
-      const inv = await api.getBranchInventory(selectedBranch.id);
-      setBranchInventory(inv);
+      await api.adjustBranchInventory(branchId, { productId, quantityToDeduct, type });
+      onRefresh();
       alert('Амжилттай хасагдлаа');
     } catch (err: any) {
       alert(err.message || 'Алдаа гарлаа');
@@ -225,6 +203,27 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
                 </div>
               </div>
 
+              {/* Inventory Summary */}
+              {(() => {
+                const inventory = b.inventory || [];
+                const totalValue = inventory.reduce((sum, item) => sum + (item.quantity * Number((item as any).product?.unitPrice || 0)), 0);
+                const totalItems = inventory.reduce((sum, item) => sum + item.quantity, 0);
+                const hasLowStock = inventory.some(item => item.quantity > 0 && item.quantity < 5);
+
+                return (
+                  <div className={`p-3 rounded-xl border flex items-center justify-between ${hasLowStock ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
+                    <div>
+                      <div className="text-[10px] uppercase font-bold text-slate-500">Нийт үлдэгдэл</div>
+                      <div className={`font-bold text-sm ${hasLowStock ? 'text-red-700' : 'text-emerald-700'}`}>₮{totalValue.toLocaleString()}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[10px] uppercase font-bold text-slate-500">Тоо ширхэг</div>
+                      <div className="font-bold text-sm text-slate-700">{totalItems} ш</div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Contact Info */}
               <div className="grid grid-cols-2 gap-3 text-xs text-slate-800 bg-slate-50 p-3 rounded-xl border border-slate-200">
                 <div>
@@ -275,11 +274,11 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
                 ) : <div />}
 
                 <button
-                  onClick={() => openInventoryModal(b)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors ml-auto"
+                  onClick={() => toggleExpand(b.id)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ml-auto border ${expandedBranchId === b.id ? 'bg-slate-200 text-slate-800 border-slate-300' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'}`}
                 >
                   <ClipboardList className="w-3.5 h-3.5" />
-                  Үлдэгдэл
+                  {expandedBranchId === b.id ? 'Хаах' : 'Үлдэгдэл'}
                 </button>
 
                 <button
@@ -290,6 +289,63 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
                   Захиалга
                 </button>
               </div>
+
+              {/* Accordion Detail */}
+              {expandedBranchId === b.id && (
+                <div className="mt-4 border-t border-slate-100 pt-4 animate-in slide-in-from-top-2 fade-in duration-200">
+                  <h4 className="text-xs font-bold text-slate-800 mb-2">Үлдэгдлийн дэлгэрэнгүй</h4>
+                  {(!b.inventory || b.inventory.length === 0) ? (
+                    <div className="text-center py-4 text-slate-500 text-xs">Үлдэгдэл алга байна.</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {b.inventory.map((item) => {
+                        const product = (item as any).product;
+                        const isLow = item.quantity > 0 && item.quantity < 5;
+                        return (
+                          <div key={item.id} className={`p-2 rounded-lg border text-xs flex flex-col gap-2 ${isLow ? 'bg-red-50/50 border-red-100' : 'bg-white border-slate-100'}`}>
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <div className="font-semibold text-slate-900">{product?.name}</div>
+                                <div className="text-[10px] text-slate-500">{product?.sku} | ₮{Number(product?.unitPrice || 0).toLocaleString()}</div>
+                              </div>
+                              <div className="text-right">
+                                <div className={`font-bold ${isLow ? 'text-red-600' : 'text-blue-600'}`}>
+                                  {item.quantity} ш
+                                  {isLow && <AlertTriangle className="w-3 h-3 inline-block ml-1 text-red-500" />}
+                                </div>
+                                <div className="font-bold text-slate-800">
+                                  ₮{(item.quantity * Number(product?.unitPrice || 0)).toLocaleString()}
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {item.quantity > 0 && (isAdmin || currentUser.role === 'WAREHOUSE_WORKER') && (
+                              <div className="flex gap-1 justify-end mt-1 border-t border-slate-100/50 pt-1.5">
+                                <button onClick={() => {
+                                  const q = prompt(`Зарлагадах тоо (дээд тал нь ${item.quantity}):`);
+                                  if (q && !isNaN(Number(q)) && Number(q) > 0 && Number(q) <= item.quantity) {
+                                    handleAdjustInventory(b.id, item.productId, Number(q), 'SALE');
+                                  }
+                                }} className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200 transition-colors">
+                                  Зарлага
+                                </button>
+                                <button onClick={() => {
+                                  const q = prompt(`Буцаах тоо (дээд тал нь ${item.quantity}):`);
+                                  if (q && !isNaN(Number(q)) && Number(q) > 0 && Number(q) <= item.quantity) {
+                                    handleAdjustInventory(b.id, item.productId, Number(q), 'RETURN');
+                                  }
+                                }} className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-1 rounded hover:bg-amber-200 transition-colors">
+                                  Буцаалт
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
@@ -397,95 +453,6 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Inventory Modal */}
-      {showInventoryModal && selectedBranch && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex justify-center items-center p-4 z-50">
-          <div className="bg-white rounded-2xl w-full max-w-3xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <ClipboardList className="w-5 h-5 text-blue-600" />
-                  Салбарын үлдэгдэл: {selectedBranch.name}
-                </h3>
-                <p className="text-xs text-slate-500 mt-1">Салбар дээрх барааны үлдэгдэл болон мөнгөн дүн</p>
-              </div>
-              <button
-                onClick={closeInventoryModal}
-                className="text-slate-400 hover:text-slate-700 bg-white hover:bg-slate-100 p-2 rounded-xl transition-colors border border-slate-200 shadow-sm"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="p-6 overflow-y-auto">
-              {inventoryLoading ? (
-                <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>
-              ) : branchInventory.length === 0 ? (
-                <div className="text-center py-12 text-slate-500 text-sm">Салбар дээр үлдэгдэл алга байна.</div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100">
-                    <span className="text-sm font-semibold text-blue-800">Нийт мөнгөн дүн:</span>
-                    <span className="text-lg font-bold text-blue-700">
-                      ₮{branchInventory.reduce((sum, item) => sum + (item.quantity * Number(item.product?.unitPrice || 0)), 0).toLocaleString()}
-                    </span>
-                  </div>
-                  
-                  <div className="border border-slate-200 rounded-xl overflow-hidden">
-                    <table className="min-w-full divide-y divide-slate-200">
-                      <thead className="bg-slate-50">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Бараа</th>
-                          <th className="px-4 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Үнэ</th>
-                          <th className="px-4 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Үлдэгдэл</th>
-                          <th className="px-4 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Нийт дүн</th>
-                          <th className="px-4 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Үйлдэл</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-slate-100">
-                        {branchInventory.map(item => (
-                          <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-4 py-3">
-                              <div className="text-sm font-semibold text-slate-900">{item.product?.name}</div>
-                              <div className="text-xs text-slate-500">{item.product?.sku}</div>
-                            </td>
-                            <td className="px-4 py-3 text-right text-sm text-slate-700 font-medium">₮{Number(item.product?.unitPrice || 0).toLocaleString()}</td>
-                            <td className="px-4 py-3 text-right text-sm font-bold text-blue-600">{item.quantity}</td>
-                            <td className="px-4 py-3 text-right text-sm font-bold text-slate-900">₮{(item.quantity * Number(item.product?.unitPrice || 0)).toLocaleString()}</td>
-                            <td className="px-4 py-3 text-right">
-                              {item.quantity > 0 && (isAdmin || currentUser.role === 'WAREHOUSE_WORKER') && (
-                                <div className="flex gap-2 justify-end">
-                                  <button onClick={() => {
-                                    const q = prompt(`Зарлагадах тоо (дээд тал нь ${item.quantity}):`);
-                                    if (q && !isNaN(Number(q)) && Number(q) > 0 && Number(q) <= item.quantity) {
-                                      handleAdjustInventory(item.productId, Number(q), 'SALE');
-                                    }
-                                  }} className="text-[11px] font-bold bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200">
-                                    Зарлага
-                                  </button>
-                                  <button onClick={() => {
-                                    const q = prompt(`Буцаах тоо (дээд тал нь ${item.quantity}):`);
-                                    if (q && !isNaN(Number(q)) && Number(q) > 0 && Number(q) <= item.quantity) {
-                                      handleAdjustInventory(item.productId, Number(q), 'RETURN');
-                                    }
-                                  }} className="text-[11px] font-bold bg-amber-100 text-amber-700 px-2 py-1 rounded hover:bg-amber-200">
-                                    Буцаалт
-                                  </button>
-                                </div>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         </div>
       )}
