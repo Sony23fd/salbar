@@ -292,7 +292,7 @@ app.post('/api/branches/:id/inventory/adjust', authenticate(['ADMIN', 'WAREHOUSE
         // For now, it just removes it from the branch inventory.
       }
       return newInv;
-    });
+    }, { maxWait: 10000, timeout: 20000 });
     res.json(updated);
   } catch (err) {
     res.status(400).json({ error: String(err) });
@@ -459,7 +459,7 @@ app.post('/api/products/replenish', authenticate(['ADMIN', 'WAREHOUSE_WORKER']),
       }
       
       return updatedProduct;
-    });
+    }, { maxWait: 10000, timeout: 20000 });
     res.json(updated);
   } catch (err) {
     res.status(400).json({ error: String(err) });
@@ -598,7 +598,7 @@ app.post('/api/orders', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async (req,
       });
       
       return order;
-    });
+    }, { maxWait: 10000, timeout: 20000 });
 
     res.json(newOrder);
   } catch (err) {
@@ -688,7 +688,7 @@ app.post('/api/orders/:id/deliver', authenticate(['ADMIN', 'DELIVERY_DRIVER']), 
         where: { id: order.branchId },
         data: { lastActivityAt: new Date() }
       });
-    });
+    }, { maxWait: 10000, timeout: 20000 });
 
     res.json({ success: true });
   } catch (err) {

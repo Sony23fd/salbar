@@ -211,7 +211,7 @@ export const api = {
     });
     if (!res.ok) {
       const err = await res.json();
-      throw new Error(err.error || 'Delivery confirmation failed');
+      throw new Error(err.details || err.details || err.error || 'Delivery confirmation failed');
     }
     return res.json();
   },
@@ -298,3 +298,4 @@ export const api = {
     return res.json();
   }
 };
+
