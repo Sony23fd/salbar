@@ -170,3 +170,13 @@ export interface Task {
   createdAt: string | Date;
   updatedAt: string | Date;
 }
+
+export interface BranchInventory {
+  id: string;
+  branchId: string;
+  branch?: Branch;
+  productId: string;
+  product?: Product;
+  quantity: number;
+  updatedAt: string | Date;
+}

@@ -38,12 +38,12 @@ export async function confirmDelivery(
     const { orderId, driverId, deliveryNotes } = validation.data;
 
     // Execute Atomic Database    // ATOMIC TRANSACTION: Confirm Delivery
-    const confirmedOrder = await db.confirmDelivery(orderId, driverId, deliveryNotes);
+    await db.confirmDelivery(orderId, driverId, deliveryNotes);
 
     return {
       success: true,
-      message: `Delivery confirmed for Order #${confirmedOrder.orderNumber}! Inventory stock deducted atomically. Branch activity updated.`,
-      data: confirmedOrder,
+      message: `Delivery confirmed for Order! Inventory stock deducted atomically. Branch activity updated.`,
+      data: undefined as any,
     };
   } catch (error: any) {
     return {

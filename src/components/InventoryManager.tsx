@@ -218,6 +218,8 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
 
   const canEdit = currentUser.role === 'ADMIN' || currentUser.role === 'WAREHOUSE_WORKER';
 
+  const totalInventoryValue = products.reduce((sum, p) => sum + (Number(p.unitPrice) * p.stockQuantity), 0);
+
   return (
     <div className="space-y-6">
       {/* Header Bar */}
@@ -230,6 +232,10 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
           <p className="text-xs text-slate-500 mt-0.5">
             Барааны код (SKU), үнэ, агуулахын үлдэгдлийн хяналт ба нөхөн татан авалт.
           </p>
+          <div className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold">
+            <span>Нийт үлдэгдэл дүн:</span>
+            <span>₮{totalInventoryValue.toLocaleString()}</span>
+          </div>
         </div>
 
         {canEdit && (

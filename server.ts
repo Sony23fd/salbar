@@ -220,15 +220,80 @@ app.post('/api/branches', authenticate(['ADMIN']), async (req, res) => {
 // Update branch/customer
 app.put('/api/branches/:id', authenticate(['ADMIN']), async (req, res) => {
   const { id } = req.params;
-  const { name, location, contactPerson, email, phone, type } = req.body;
+  const { name, location, contactPerson, email, phone, type, isActive } = req.body;
   try {
     const updated = await prisma.branch.update({
       where: { id },
-      data: { name, location, contactPerson, email, phone, type },
+      data: { name, location, contactPerson, email, phone, type, isActive },
     });
     res.json(updated);
-  } catch (error: any) {
-    handleApiError(res, error, 400);
+  } catch (err) {
+    handleApiError(res, err, 400);
+  }
+});
+
+// Branch Inventory
+app.get('/api/branches/:id/inventory', authenticate(), async (req, res) => {
+  const { id } = req.params;
+  try {
+    const inventory = await prisma.branchInventory.findMany({
+      where: { branchId: id },
+      include: { product: true }
+    });
+    res.json(inventory);
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
+
+app.post('/api/branches/:id/inventory/adjust', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async (req, res) => {
+  const { id } = req.params;
+  const { productId, quantityToDeduct, type, notes } = req.body; // type: 'SALE' or 'RETURN'
+  try {
+    const updated = await prisma.$transaction(async (tx) => {
+      const branchInv = await tx.branchInventory.findUnique({
+        where: { branchId_productId: { branchId: id, productId } }
+      });
+      if (!branchInv || branchInv.quantity < quantityToDeduct) {
+        throw new Error('Салбар дээр барааны үлдэгдэл хүрэлцэхгүй байна');
+      }
+
+      // Deduct from branch
+      const newInv = await tx.branchInventory.update({
+        where: { id: branchInv.id },
+        data: { quantity: branchInv.quantity - quantityToDeduct }
+      });
+
+      // If it's a return, we add it back to main inventory
+      if (type === 'RETURN') {
+        const product = await tx.product.findUnique({ where: { id: productId }});
+        if (product) {
+          const newStock = product.stockQuantity + quantityToDeduct;
+          await tx.product.update({
+            where: { id: productId },
+            data: { stockQuantity: newStock }
+          });
+          await tx.inventoryTransaction.create({
+            data: {
+              productId,
+              type: 'ADJUSTMENT',
+              quantity: quantityToDeduct,
+              previousStock: product.stockQuantity,
+              newStock,
+              userId: req.user!.id,
+              notes: notes || `Салбарын буцаалт (Branch ID: ${id})`
+            }
+          });
+        }
+      } else {
+        // If it's a sale, we might just log it somewhere if we had a Sales model. 
+        // For now, it just removes it from the branch inventory.
+      }
+      return newInv;
+    });
+    res.json(updated);
+  } catch (err) {
+    res.status(400).json({ error: String(err) });
   }
 });
 
@@ -576,6 +641,26 @@ app.post('/api/orders/:id/deliver', authenticate(['ADMIN', 'DELIVERY_DRIVER']), 
             notes: `Захиалгын хүргэлт (${order.orderNumber})`
           }
         });
+
+        // Add to Branch Inventory
+        const existingBranchInv = await tx.branchInventory.findUnique({
+          where: { branchId_productId: { branchId: order.branchId, productId: product.id } }
+        });
+        
+        if (existingBranchInv) {
+          await tx.branchInventory.update({
+            where: { id: existingBranchInv.id },
+            data: { quantity: existingBranchInv.quantity + item.quantity }
+          });
+        } else {
+          await tx.branchInventory.create({
+            data: {
+              branchId: order.branchId,
+              productId: product.id,
+              quantity: item.quantity
+            }
+          });
+        }
       }
 
       // Update order

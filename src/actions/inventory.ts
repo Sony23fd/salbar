@@ -50,7 +50,8 @@ export async function registerProduct(
       unitPrice: data.unitPrice,
       stockQuantity: data.stockQuantity,
       minStockLevel: (data as any).minStockLevel || 5,
-      categoryId: (data as any).categoryId,
+      categoryId: validation.data.categoryId || undefined,
+      isActive: true,
     });
 
     return {

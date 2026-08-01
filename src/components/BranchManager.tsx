@@ -20,6 +20,10 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
   currentUser,
 }) => {
   const [showModal, setShowModal] = useState(false);
+  const [showInventoryModal, setShowInventoryModal] = useState(false);
+  const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
+  const [branchInventory, setBranchInventory] = useState<any[]>([]);
+  const [inventoryLoading, setInventoryLoading] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
   
   // Form states
@@ -56,6 +60,39 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
     setShowModal(false);
   };
 
+  const openInventoryModal = async (branch: Branch) => {
+    setSelectedBranch(branch);
+    setShowInventoryModal(true);
+    setInventoryLoading(true);
+    try {
+      const inv = await api.getBranchInventory(branch.id);
+      setBranchInventory(inv);
+    } catch (err: any) {
+      alert(err.message || 'Үлдэгдэл татахад алдаа гарлаа');
+    } finally {
+      setInventoryLoading(false);
+    }
+  };
+
+  const closeInventoryModal = () => {
+    setShowInventoryModal(false);
+    setSelectedBranch(null);
+    setBranchInventory([]);
+  };
+
+  const handleAdjustInventory = async (productId: string, quantityToDeduct: number, type: 'SALE' | 'RETURN') => {
+    if (!selectedBranch) return;
+    try {
+      await api.adjustBranchInventory(selectedBranch.id, { productId, quantityToDeduct, type });
+      // Refresh inventory
+      const inv = await api.getBranchInventory(selectedBranch.id);
+      setBranchInventory(inv);
+      alert('Амжилттай хасагдлаа');
+    } catch (err: any) {
+      alert(err.message || 'Алдаа гарлаа');
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -63,7 +100,7 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
       if (editingBranch) {
         await api.updateBranch(editingBranch.id, { name, location, contactPerson, email, phone, type });
       } else {
-        await api.createBranch({ name, location, contactPerson, email, phone, type });
+        await api.addBranch({ name, location, contactPerson, email, phone, type });
       }
       onRefresh();
       closeModal();
@@ -238,8 +275,16 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
                 ) : <div />}
 
                 <button
+                  onClick={() => openInventoryModal(b)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors ml-auto"
+                >
+                  <ClipboardList className="w-3.5 h-3.5" />
+                  Үлдэгдэл
+                </button>
+
+                <button
                   onClick={() => onQuickOrder(b.id)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition-colors ml-auto"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
                 >
                   <ShoppingCart className="w-3.5 h-3.5" />
                   Захиалга
@@ -352,6 +397,95 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Inventory Modal */}
+      {showInventoryModal && selectedBranch && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+          <div className="bg-white rounded-2xl w-full max-w-3xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <ClipboardList className="w-5 h-5 text-blue-600" />
+                  Салбарын үлдэгдэл: {selectedBranch.name}
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">Салбар дээрх барааны үлдэгдэл болон мөнгөн дүн</p>
+              </div>
+              <button
+                onClick={closeInventoryModal}
+                className="text-slate-400 hover:text-slate-700 bg-white hover:bg-slate-100 p-2 rounded-xl transition-colors border border-slate-200 shadow-sm"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto">
+              {inventoryLoading ? (
+                <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>
+              ) : branchInventory.length === 0 ? (
+                <div className="text-center py-12 text-slate-500 text-sm">Салбар дээр үлдэгдэл алга байна.</div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100">
+                    <span className="text-sm font-semibold text-blue-800">Нийт мөнгөн дүн:</span>
+                    <span className="text-lg font-bold text-blue-700">
+                      ₮{branchInventory.reduce((sum, item) => sum + (item.quantity * Number(item.product?.unitPrice || 0)), 0).toLocaleString()}
+                    </span>
+                  </div>
+                  
+                  <div className="border border-slate-200 rounded-xl overflow-hidden">
+                    <table className="min-w-full divide-y divide-slate-200">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Бараа</th>
+                          <th className="px-4 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Үнэ</th>
+                          <th className="px-4 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Үлдэгдэл</th>
+                          <th className="px-4 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Нийт дүн</th>
+                          <th className="px-4 py-3 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Үйлдэл</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-slate-100">
+                        {branchInventory.map(item => (
+                          <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-4 py-3">
+                              <div className="text-sm font-semibold text-slate-900">{item.product?.name}</div>
+                              <div className="text-xs text-slate-500">{item.product?.sku}</div>
+                            </td>
+                            <td className="px-4 py-3 text-right text-sm text-slate-700 font-medium">₮{Number(item.product?.unitPrice || 0).toLocaleString()}</td>
+                            <td className="px-4 py-3 text-right text-sm font-bold text-blue-600">{item.quantity}</td>
+                            <td className="px-4 py-3 text-right text-sm font-bold text-slate-900">₮{(item.quantity * Number(item.product?.unitPrice || 0)).toLocaleString()}</td>
+                            <td className="px-4 py-3 text-right">
+                              {item.quantity > 0 && (isAdmin || currentUser.role === 'WAREHOUSE_WORKER') && (
+                                <div className="flex gap-2 justify-end">
+                                  <button onClick={() => {
+                                    const q = prompt(`Зарлагадах тоо (дээд тал нь ${item.quantity}):`);
+                                    if (q && !isNaN(Number(q)) && Number(q) > 0 && Number(q) <= item.quantity) {
+                                      handleAdjustInventory(item.productId, Number(q), 'SALE');
+                                    }
+                                  }} className="text-[11px] font-bold bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200">
+                                    Зарлага
+                                  </button>
+                                  <button onClick={() => {
+                                    const q = prompt(`Буцаах тоо (дээд тал нь ${item.quantity}):`);
+                                    if (q && !isNaN(Number(q)) && Number(q) > 0 && Number(q) <= item.quantity) {
+                                      handleAdjustInventory(item.productId, Number(q), 'RETURN');
+                                    }
+                                  }} className="text-[11px] font-bold bg-amber-100 text-amber-700 px-2 py-1 rounded hover:bg-amber-200">
+                                    Буцаалт
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

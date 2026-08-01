@@ -1,4 +1,4 @@
-import { User, Branch, Product, Order, Category } from '../types/wms';
+import { User, Branch, Product, Order, Category, Task, TaskComment } from '../types/wms';
 
 const API_BASE = '/api';
 
@@ -86,6 +86,22 @@ export const api = {
     const res = await fetch(`${API_BASE}/branches/${id}/deactivate`, {
       method: 'PUT',
       headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async getBranchInventory(id: string): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/branches/${id}/inventory`, { headers: getHeaders() });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async adjustBranchInventory(id: string, data: { productId: string; quantityToDeduct: number; type: 'SALE' | 'RETURN'; notes?: string }): Promise<any> {
+    const res = await fetch(`${API_BASE}/branches/${id}/inventory/adjust`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
