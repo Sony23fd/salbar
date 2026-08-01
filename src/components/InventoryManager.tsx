@@ -219,6 +219,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
   const canEdit = currentUser.role === 'ADMIN' || currentUser.role === 'WAREHOUSE_WORKER';
 
   const totalInventoryValue = products.reduce((sum, p) => sum + (Number(p.unitPrice) * p.stockQuantity), 0);
+  const filteredInventoryValue = filteredProducts.reduce((sum, p) => sum + (Number(p.unitPrice) * p.stockQuantity), 0);
 
   return (
     <div className="space-y-6">
@@ -232,9 +233,17 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
           <p className="text-xs text-slate-500 mt-0.5">
             Барааны код (SKU), үнэ, агуулахын үлдэгдлийн хяналт ба нөхөн татан авалт.
           </p>
-          <div className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold">
-            <span>Нийт үлдэгдэл дүн:</span>
-            <span>₮{totalInventoryValue.toLocaleString()}</span>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-800 border border-blue-200 rounded-lg text-sm font-semibold">
+              <span>Нийт агуулахын дүн:</span>
+              <span>₮{totalInventoryValue.toLocaleString()}</span>
+            </div>
+            {filteredProducts.length !== products.length && (
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-800 border border-indigo-200 rounded-lg text-sm font-semibold animate-in fade-in zoom-in-95 duration-200">
+                <span>Шүүгдсэн дүн:</span>
+                <span>₮{filteredInventoryValue.toLocaleString()}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -288,6 +297,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                 <th className="p-4">Ангилал</th>
                 <th className="p-4 text-right">Нэгж үнэ</th>
                 <th className="p-4 text-right">Агуулахын үлдэгдэл</th>
+                <th className="p-4 text-right">Нийт дүн</th>
                 <th className="p-4 text-center">Төлөв</th>
                 {canEdit && <th className="p-4 text-center">Үйлдэл</th>}
               </tr>
@@ -295,7 +305,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
             <tbody className="divide-y divide-slate-100 font-sans">
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-500">
+                  <td colSpan={canEdit ? 7 : 6} className="p-8 text-center text-slate-500">
                     Хайлтад тохирох бараа олдсонгүй.
                   </td>
                 </tr>
@@ -335,6 +345,10 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                         <span className={isCritical ? 'text-red-600' : isLow ? 'text-amber-600' : 'text-slate-900'}>
                           {prod.stockQuantity} ширхэг
                         </span>
+                      </td>
+
+                      <td className="p-4 text-right font-mono font-bold text-sm text-blue-700 bg-blue-50/50">
+                        {(Number(prod.unitPrice) * prod.stockQuantity).toLocaleString()}₮
                       </td>
 
                       <td className="p-4 text-center">
