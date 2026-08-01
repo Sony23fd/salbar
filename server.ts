@@ -25,7 +25,8 @@ app.use(express.json());
 // Helper for generic API errors
 const handleApiError = (res: Response, err: any, status = 500) => {
   console.error("API Error:", err);
-  res.status(status).json({ error: 'Internal Server Error' });
+  const errorMessage = err instanceof Error ? err.message : String(err);
+  res.status(status).json({ error: 'Internal Server Error', details: errorMessage });
 };
 
 // Extend Express Request
