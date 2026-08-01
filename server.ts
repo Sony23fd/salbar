@@ -697,7 +697,7 @@ app.post('/api/orders/:id/deliver', authenticate(['ADMIN', 'DELIVERY_DRIVER']), 
 
 app.put('/api/orders/:id/status', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'DELIVERY_DRIVER']), async (req, res) => {
   const { id } = req.params;
-  const { newStatus, changedById, notes } = req.body;
+  const { status: newStatus, changedById, notes } = req.body;
   try {
     const order = await prisma.order.findUnique({ where: { id }, include: { items: { include: { product: true } } } });
     if (!order) return res.status(404).json({ error: 'Order not found' });
