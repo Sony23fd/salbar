@@ -203,6 +203,7 @@ export default function App() {
             {activeTab === 'branches' && currentUser.role === 'ADMIN' && (
               <BranchManager
                 branches={branches}
+                orders={orders}
                 inactiveAlerts={inactiveAlerts}
                 onQuickOrder={handleQuickOrderForBranch}
                 onRefresh={reloadData}
