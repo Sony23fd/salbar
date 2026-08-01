@@ -22,10 +22,10 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
   currentUser,
 }) => {
   const [showModal, setShowModal] = useState(false);
-  const [historyBranchId, setHistoryBranchId] = useState<string | null>(null);
-  const [expandedOrderHistoryId, setExpandedOrderHistoryId] = useState<string | null>(null);
   const [expandedBranchId, setExpandedBranchId] = useState<string | null>(null);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
+  const [historyBranchId, setHistoryBranchId] = useState<string | null>(null);
+  const [expandedOrderHistoryId, setExpandedOrderHistoryId] = useState<string | null>(null);
   
   // Form states
   const [name, setName] = useState('');
@@ -284,12 +284,13 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
                   <ClipboardList className="w-3.5 h-3.5" />
                   {expandedBranchId === b.id ? 'Хаах' : 'Үлдэгдэл'}
                 </button>
+
                 <button
                   onClick={() => setHistoryBranchId(b.id)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors"
                 >
                   <History className="w-3.5 h-3.5" />
-                  ????
+                  Түүх
                 </button>
 
                 <button
@@ -362,8 +363,6 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
         })}
       </div>
 
-
-
       {/* History Modal */}
       {historyBranchId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
@@ -371,7 +370,7 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
             <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center justify-between shrink-0 rounded-t-2xl">
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <History className="w-5 h-5 text-indigo-600" />
-                {branches.find((b) => b.id === historyBranchId)?.name} - ????????? ????
+                {branches.find((b) => b.id === historyBranchId)?.name} - Захиалгын түүх
               </h3>
               <button onClick={() => { setHistoryBranchId(null); setExpandedOrderHistoryId(null); }} className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg hover:bg-slate-200">
                 <X className="w-5 h-5" />
@@ -386,8 +385,8 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
                       <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Package className="w-8 h-8" />
                       </div>
-                      <h4 className="text-sm font-bold text-slate-700 mb-1">???????? ???? ?????</h4>
-                      <p className="text-xs text-slate-500">??? ?????? ???? ???????? ???????? ????????????? ?????.</p>
+                      <h4 className="text-sm font-bold text-slate-700 mb-1">Захиалга алга байна</h4>
+                      <p className="text-xs text-slate-500">Энэ салбар дээр одоогоор захиалга бүртгэгдээгүй байна.</p>
                     </div>
                   );
                 }
@@ -423,31 +422,31 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
                                   <Clock className="w-3 h-3" />
                                   {new Date(order.createdAt).toLocaleString('mn-MN')}
                                 </span>
-                                <span>�</span>
-                                <span>????????: {order.createdByName}</span>
+                                <span>•</span>
+                                <span>Үүсгэсэн: {order.createdByName}</span>
                               </div>
                             </div>
                             <div className="text-right flex items-center gap-4">
                               <div>
-                                <div className="text-[10px] uppercase font-bold text-slate-400">???? ???</div>
-                                <div className="text-sm font-bold text-slate-800">?{order.totalAmount.toLocaleString()}</div>
+                                <div className="text-[10px] uppercase font-bold text-slate-400">Нийт дүн</div>
+                                <div className="text-sm font-bold text-slate-800">₮{order.totalAmount.toLocaleString()}</div>
                               </div>
                             </div>
                           </div>
                           
                           {isExpanded && (
                             <div className="border-t border-slate-100 bg-slate-50 p-4">
-                              <h5 className="text-[11px] uppercase font-bold text-slate-500 mb-3">????????? ????????? ({order.items.length})</h5>
+                              <h5 className="text-[11px] uppercase font-bold text-slate-500 mb-3">Захиалсан бараанууд ({order.items.length})</h5>
                               <div className="space-y-2">
                                 {order.items.map((item) => (
                                   <div key={item.id} className="flex items-center justify-between bg-white border border-slate-100 p-2.5 rounded-lg">
                                     <div>
                                       <div className="text-xs font-semibold text-slate-800">{item.productName}</div>
-                                      <div className="text-[10px] text-slate-500">{item.sku} | ?{item.unitPrice.toLocaleString()}</div>
+                                      <div className="text-[10px] text-slate-500">{item.sku} | ₮{item.unitPrice.toLocaleString()}</div>
                                     </div>
                                     <div className="text-right">
-                                      <div className="text-xs font-bold text-blue-600">{item.quantity} ?</div>
-                                      <div className="text-[11px] font-bold text-slate-700">?{item.totalPrice.toLocaleString()}</div>
+                                      <div className="text-xs font-bold text-blue-600">{item.quantity} ш</div>
+                                      <div className="text-[11px] font-bold text-slate-700">₮{item.totalPrice.toLocaleString()}</div>
                                     </div>
                                   </div>
                                 ))}
@@ -455,7 +454,7 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
                               {order.deliveredAt && (
                                 <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center gap-2 text-[11px] text-emerald-700 font-medium">
                                   <CheckCircle2 className="w-3.5 h-3.5" />
-                                  ??????????: {new Date(order.deliveredAt).toLocaleString('mn-MN')} (??????: {order.deliveredByName})
+                                  Хүргэгдсэн: {new Date(order.deliveredAt).toLocaleString('mn-MN')} (Жолооч: {order.deliveredByName})
                                 </div>
                               )}
                             </div>
@@ -472,7 +471,7 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
                 onClick={() => { setHistoryBranchId(null); setExpandedOrderHistoryId(null); }}
                 className="px-5 py-2 text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl transition-colors"
               >
-                ????
+                Хаах
               </button>
             </div>
           </div>
