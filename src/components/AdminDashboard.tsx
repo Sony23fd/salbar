@@ -88,6 +88,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     .filter((o) => o.status === 'DELIVERED')
     .reduce((sum, o) => sum + o.totalAmount, 0);
 
+  const totalMarginProfit = filteredOrders
+    .filter((o) => o.status === 'DELIVERED')
+    .reduce((sum, o) => sum + (o.marginProfit || 0), 0);
+
   const lowStockProducts = products.filter((p) => p.stockQuantity <= 10);
   const criticalStockProducts = products.filter((p) => p.stockQuantity <= 3);
 
@@ -211,7 +215,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </div>
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Total Orders */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
@@ -246,6 +250,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </span>
           </div>
           <p className="text-[11px] text-slate-500 mt-1">Агуулахын нөөцөөс автомат хасагдсан</p>
+        </div>
+
+        {/* Margin Profit */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Цэвэр ашиг (Margin)</span>
+            <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600">
+              <DollarSign className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-3 flex items-baseline justify-between">
+            <span className="text-2xl font-black text-slate-900 font-mono">
+              {totalMarginProfit.toLocaleString()}₮
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-500 mt-1">Салбаруудын нэмэгдэл үнээс олсон</p>
         </div>
 
         {/* Low Stock Alert Count */}

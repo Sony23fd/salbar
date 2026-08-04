@@ -34,6 +34,7 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [type, setType] = useState<BranchType>('BRANCH');
+  const [marginPercent, setMarginPercent] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const openModal = (branch?: Branch) => {
@@ -45,6 +46,7 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
       setEmail(branch.email);
       setPhone(branch.phone);
       setType(branch.type);
+      setMarginPercent(branch.marginPercent || 0);
     } else {
       setEditingBranch(null);
       setName('');
@@ -53,6 +55,7 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
       setEmail('');
       setPhone('');
       setType('BRANCH');
+      setMarginPercent(0);
     }
     setShowModal(true);
   };
@@ -80,9 +83,9 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
     setIsSubmitting(true);
     try {
       if (editingBranch) {
-        await api.updateBranch(editingBranch.id, { name, location, contactPerson, email, phone, type });
+        await api.updateBranch(editingBranch.id, { name, location, contactPerson, email, phone, type, marginPercent });
       } else {
-        await api.addBranch({ name, location, contactPerson, email, phone, type });
+        await api.addBranch({ name, location, contactPerson, email, phone, type, marginPercent });
       }
       onRefresh();
       closeModal();
@@ -194,6 +197,11 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
                       {isCustomer ? <Users className="w-3 h-3" /> : <Building className="w-3 h-3" />}
                       {isCustomer ? 'Харилцагч' : 'Дотоод салбар'}
                     </span>
+                    {(b.marginPercent !== undefined && b.marginPercent !== 0) && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        Нэмэгдэл үнэ: {b.marginPercent > 0 ? '+' : ''}{b.marginPercent}%
+                      </span>
+                    )}
                     {isInactive && (
                       <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
                         <AlertTriangle className="w-3 h-3" /> {alertInfo?.daysInactive} хоног
@@ -505,6 +513,19 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
                     <option value="BRANCH">Дотоод салбар</option>
                     <option value="CUSTOMER">Гадны харилцагч</option>
                   </select>
+                </div>
+
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Ашгийн хувь (Margin %)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={marginPercent}
+                    onChange={(e) => setMarginPercent(parseFloat(e.target.value) || 0)}
+                    placeholder="Жишээ нь: 15 эсвэл -10"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-mono"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">Үндсэн үнэн дээр нэмэгдэх (эсвэл хасагдах) хувь</p>
                 </div>
 
                 <div className="col-span-2 sm:col-span-1">

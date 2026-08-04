@@ -208,10 +208,10 @@ app.get('/api/branches', authenticate(), async (req, res) => {
 
 // Create new branch/customer
 app.post('/api/branches', authenticate(['ADMIN']), async (req, res) => {
-  const { name, location, contactPerson, email, phone, type } = req.body;
+  const { name, location, contactPerson, email, phone, type, marginPercent } = req.body;
   try {
     const newBranch = await prisma.branch.create({
-      data: { name, location, contactPerson, email, phone, type },
+      data: { name, location, contactPerson, email, phone, type, marginPercent: Number(marginPercent || 0) },
     });
     res.json(newBranch);
   } catch (error: any) {
@@ -222,11 +222,11 @@ app.post('/api/branches', authenticate(['ADMIN']), async (req, res) => {
 // Update branch/customer
 app.put('/api/branches/:id', authenticate(['ADMIN']), async (req, res) => {
   const { id } = req.params;
-  const { name, location, contactPerson, email, phone, type, isActive } = req.body;
+  const { name, location, contactPerson, email, phone, type, isActive, marginPercent } = req.body;
   try {
     const updated = await prisma.branch.update({
       where: { id },
-      data: { name, location, contactPerson, email, phone, type, isActive },
+      data: { name, location, contactPerson, email, phone, type, isActive, marginPercent: Number(marginPercent || 0) },
     });
     res.json(updated);
   } catch (err) {
@@ -504,6 +504,8 @@ app.get('/api/orders', authenticate(), async (req, res) => {
     branchLocation: o.branch?.location,
     status: o.status,
     totalAmount: Number(o.totalAmount),
+    baseTotalAmount: Number(o.baseTotalAmount || 0),
+    marginProfit: Number(o.marginProfit || 0),
     createdById: o.createdById,
     createdByName: o.createdBy?.name,
     deliveredById: o.deliveredById,
@@ -545,19 +547,31 @@ app.post('/api/orders', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async (req,
     if (!branch || !creator) return res.status(404).json({ error: 'Branch or user not found' });
 
     let totalAmount = 0;
+    let baseTotalAmount = 0;
+    let marginProfit = 0;
     const itemsData = [];
+    
+    const marginPercent = branch.marginPercent || 0;
     
     for (const item of itemsInput) {
       const product = await prisma.product.findUnique({ where: { id: item.productId } });
       if (!product) return res.status(404).json({ error: `Product ${item.productId} not found` });
       
-      const itemTotal = Number(product.unitPrice) * item.quantity;
-      totalAmount += itemTotal;
+      const basePrice = Number(product.unitPrice);
+      const effectivePrice = basePrice * (1 + marginPercent / 100);
+      
+      const itemBaseTotal = basePrice * item.quantity;
+      const itemEffectiveTotal = effectivePrice * item.quantity;
+      
+      totalAmount += itemEffectiveTotal;
+      baseTotalAmount += itemBaseTotal;
+      marginProfit += (itemEffectiveTotal - itemBaseTotal);
+      
       itemsData.push({
         productId: product.id,
         quantity: item.quantity,
-        unitPrice: product.unitPrice,
-        totalPrice: itemTotal,
+        unitPrice: effectivePrice,
+        totalPrice: itemEffectiveTotal,
         sku: product.sku,
       });
     }
@@ -571,6 +585,8 @@ app.post('/api/orders', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async (req,
           branchId,
           createdById,
           totalAmount,
+          baseTotalAmount,
+          marginProfit,
           status: 'PENDING',
           items: {
             create: itemsData.map(i => ({

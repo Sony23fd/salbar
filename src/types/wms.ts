@@ -32,6 +32,7 @@ export interface Branch {
   phone: string;
   type: BranchType;
   isActive: boolean;
+  marginPercent?: number;
   lastActivityAt: string | Date;
   orders?: Order[];
   inventory?: BranchInventory[];
@@ -93,6 +94,8 @@ export interface Order {
   branchLocation: string;
   status: OrderStatus;
   totalAmount: number;
+  baseTotalAmount?: number;
+  marginProfit?: number;
   createdById: string;
   createdByName: string;
   deliveredById?: string;
