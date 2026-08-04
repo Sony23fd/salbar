@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { Order, Product, Branch, InactiveBranchAlert, User, OrderStatus } from '../types/wms';
 import { InactiveBranchAlertComponent } from './InactiveBranchAlert';
 import { Package, ShoppingCart, Truck, Building2, AlertTriangle, ArrowUpRight, TrendingUp, ShieldCheck, DollarSign, BarChart3, Calendar } from 'lucide-react';
@@ -36,60 +36,110 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onQuickOrder,
   onSimulateActivity,
 }) => {
-  // Metrics
-  const totalOrdersCount = orders.length;
-  const pendingOrdersCount = orders.filter((o) => o.status === 'PENDING' || o.status === 'PACKED' || o.status === 'IN_TRANSIT').length;
-  const deliveredOrdersCount = orders.filter((o) => o.status === 'DELIVERED').length;
+  // Date Range State
+  const [dateRange, setDateRange] = useState<'30days' | 'thisMonth' | 'all' | 'custom'>('30days');
+  const [customStartDate, setCustomStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  });
+  const [customEndDate, setCustomEndDate] = useState(() => new Date().toISOString().split('T')[0]);
 
-  const totalFulfilledRevenue = orders
+  // Derived Dates
+  const { startDate, endDate } = useMemo(() => {
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    
+    let start = new Date(0); // All time
+    if (dateRange === '30days') {
+      start = new Date();
+      start.setDate(start.getDate() - 30);
+      start.setHours(0, 0, 0, 0);
+    } else if (dateRange === 'thisMonth') {
+      start = new Date();
+      start.setDate(1);
+      start.setHours(0, 0, 0, 0);
+    } else if (dateRange === 'custom') {
+      start = new Date(customStartDate);
+      start.setHours(0, 0, 0, 0);
+      
+      const customEnd = new Date(customEndDate);
+      customEnd.setHours(23, 59, 59, 999);
+      return { startDate: start, endDate: customEnd };
+    }
+    
+    return { startDate: start, endDate: end };
+  }, [dateRange, customStartDate, customEndDate]);
+
+  // Filtered Orders
+  const filteredOrders = useMemo(() => {
+    return orders.filter(o => {
+      const d = new Date(o.createdAt).getTime();
+      return d >= startDate.getTime() && d <= endDate.getTime();
+    });
+  }, [orders, startDate, endDate]);
+
+  // Metrics
+  const totalOrdersCount = filteredOrders.length;
+  const pendingOrdersCount = filteredOrders.filter((o) => o.status === 'PENDING' || o.status === 'PACKED' || o.status === 'IN_TRANSIT').length;
+  const deliveredOrdersCount = filteredOrders.filter((o) => o.status === 'DELIVERED').length;
+
+  const totalFulfilledRevenue = filteredOrders
     .filter((o) => o.status === 'DELIVERED')
     .reduce((sum, o) => sum + o.totalAmount, 0);
 
   const lowStockProducts = products.filter((p) => p.stockQuantity <= 10);
   const criticalStockProducts = products.filter((p) => p.stockQuantity <= 3);
 
-  // 7-Day Order Volume Chart Data
-  const last7DaysData = React.useMemo(() => {
-    const days = [];
-    const now = new Date();
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      const year = d.getFullYear();
-      const month = d.getMonth();
-      const date = d.getDate();
+  // Dynamic Chart Data
+  const chartData = React.useMemo(() => {
+    // Determine if we should group by month (> 60 days) or day
+    const diffDays = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    const isMonthly = diffDays > 60 || startDate.getTime() === 0;
 
-      const dayOrders = orders.filter((o) => {
-        const oDate = new Date(o.createdAt);
-        return (
-          oDate.getFullYear() === year &&
-          oDate.getMonth() === month &&
-          oDate.getDate() === date
-        );
-      });
+    const dataMap = new Map<string, { label: string, total: number, delivered: number, revenue: number, sortKey: string }>();
 
-      const shortMonth = d.getMonth() + 1;
-      const shortDay = d.getDate();
-      const shortDate = `${shortMonth}/${shortDay}`;
+    filteredOrders.forEach(o => {
+      const d = new Date(o.createdAt);
+      let key = '';
+      let label = '';
+      let sortKey = '';
 
-      const totalCount = dayOrders.length;
-      const deliveredCount = dayOrders.filter((o) => o.status === 'DELIVERED').length;
-      const totalAmount = dayOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+      if (isMonthly) {
+        key = `${d.getFullYear()}-${d.getMonth() + 1}`;
+        label = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+        sortKey = label;
+      } else {
+        key = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+        label = `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}`;
+        sortKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
+      }
 
-      days.push({
-        shortDate,
-        'Нийт захиалга': totalCount,
-        'Хүргэгдсэн': deliveredCount,
-        'Нийт дүн (₮)': Math.round(totalAmount),
-      });
-    }
-    return days;
-  }, [orders]);
+      if (!dataMap.has(key)) {
+        dataMap.set(key, { label, total: 0, delivered: 0, revenue: 0, sortKey });
+      }
+      const entry = dataMap.get(key)!;
+      entry.total += 1;
+      if (o.status === 'DELIVERED') {
+        entry.delivered += 1;
+        entry.revenue += o.totalAmount;
+      }
+    });
 
-  const last7DaysTotalOrders = last7DaysData.reduce((sum, d) => sum + d['Нийт захиалга'], 0);
-  const last7DaysTotalRevenue = last7DaysData.reduce((sum, d) => sum + d['Нийт дүн (₮)'], 0);
+    const result = Array.from(dataMap.values()).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
 
-  const recentOrders = [...orders].sort(
+    return result.map(r => ({
+      shortDate: r.label,
+      'Нийт захиалга': r.total,
+      'Хүргэгдсэн': r.delivered,
+      'Нийт дүн (₮)': Math.round(r.revenue),
+    }));
+  }, [filteredOrders, startDate, endDate]);
+
+  const chartTotalOrders = chartData.reduce((sum, d) => sum + d['Нийт захиалга'], 0);
+  const chartTotalRevenue = chartData.reduce((sum, d) => sum + d['Нийт дүн (₮)'], 0);
+
+  const recentOrders = [...filteredOrders].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   ).slice(0, 5);
 
@@ -120,6 +170,45 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         onSimulateActivity={onSimulateActivity}
         userRole={currentUser.role}
       />
+
+            {/* Date Range Selector */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Calendar className="w-5 h-5 text-blue-600" />
+          <h2 className="text-sm font-bold text-slate-900">Хугацаагаар шүүх</h2>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-3">
+          <select 
+            value={dateRange}
+            onChange={(e) => setDateRange(e.target.value as any)}
+            className="bg-slate-50 border border-slate-200 text-sm font-semibold rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-colors hover:bg-slate-100"
+          >
+            <option value="30days">Сүүлийн 30 хоног</option>
+            <option value="thisMonth">Энэ сар</option>
+            <option value="all">Бүх хугацаа (All time)</option>
+            <option value="custom">Дурын хугацаа сонгох</option>
+          </select>
+
+          {dateRange === 'custom' && (
+            <div className="flex items-center gap-2 animate-in fade-in zoom-in-95 duration-200">
+              <input 
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              />
+              <span className="text-slate-400 font-bold">-</span>
+              <input 
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              />
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -206,17 +295,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div>
             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-blue-600" />
-              Сүүлийн 7 хоногийн захиалгын хэмжээ
+              Захиалгын график харьцуулалт
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Салбаруудаас өдөр тутам ирсэн ба хүргэгдсэн захиалгын тооны харьцуулалт
+              Сонгосон хугацаан дахь өдөр/сарын захиалгын харьцуулалт
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-blue-600" />
-              Сүүлийн 7 хоногт: <strong className="text-blue-700">{last7DaysTotalOrders} захиалга</strong> ({last7DaysTotalRevenue.toLocaleString()}₮)
+              Нийт шүүгдсэн: <strong className="text-blue-700">{chartTotalOrders} захиалга</strong> ({chartTotalRevenue.toLocaleString()}₮)
             </span>
           </div>
         </div>
@@ -224,7 +313,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <div className="h-72 w-full pt-2">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
-              data={last7DaysData}
+              data={chartData}
               margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
             >
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -285,7 +374,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               onClick={() => onNavigateTab('orders')}
               className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1"
             >
-              Бүгдийг харах ({orders.length}) <ArrowUpRight className="w-3.5 h-3.5" />
+              Бүгдийг харах ({filteredOrders.length}) <ArrowUpRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
