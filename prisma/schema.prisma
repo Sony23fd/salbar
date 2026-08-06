@@ -318,6 +318,19 @@ model BOM {
   calculatedUnitCost      Decimal   @db.Decimal(10, 2) @default(0)
   suggestedRetailPrice    Decimal   @db.Decimal(10, 2) @default(0)
   items                   BOMItem[]
+  
+  // Tech Card Extensions
+  version                 String    @default("v1.0")
+  isApproved              Boolean   @default(false)
+  preparationTimeMinutes  Int       @default(0)
+  cookingTimeMinutes      Int       @default(0)
+  shelfLifeDays           Int       @default(0)
+  instructions            String?   @db.Text
+  mediaUrls               String[]  @default([])
+  allergens               String[]  @default([])
+  nutritionInfo           String?   @db.Text
+  steps                   TechCardStep[]
+
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
 
@@ -336,6 +349,20 @@ model BOMItem {
   itemCategory      String   @default("RAW_MATERIAL") // RAW_MATERIAL | PACKAGING | AUXILIARY
 
   @@map("bom_items")
+}
+
+model TechCardStep {
+  id                String   @id @default(cuid())
+  bomId             String
+  bom               BOM      @relation(fields: [bomId], references: [id], onDelete: Cascade)
+  stepNumber        Int
+  title             String
+  description       String?  @db.Text
+  timeMinutes       Int      @default(0)
+  temperature       Float?
+  equipmentNeeded   String[] @default([])
+
+  @@map("tech_card_steps")
 }
 
 // ------------------------------------------
@@ -423,6 +450,11 @@ model ProductionBatch {
   totalProductionCost Decimal               @db.Decimal(10, 2) @default(0)
   calculatedUnitCost  Decimal               @db.Decimal(10, 2) @default(0)
   notes               String?
+  
+  // Tech Card Batch Execution
+  checklistStatus     String?               // JSON string tracking step completion
+  scrapAnalysisAlert  Boolean               @default(false)
+
   items               ProductionBatchItem[]
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt

@@ -56,6 +56,12 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
   // Form States - BOM
   const [selectedFinishedProduct, setSelectedFinishedProduct] = useState('');
   const [bomItems, setBomItems] = useState<{ ingredientId: string; quantityPerUnit: number }[]>([]);
+  const [bomVersion, setBomVersion] = useState('v1.0');
+  const [bomPrepTime, setBomPrepTime] = useState<number>(0);
+  const [bomCookTime, setBomCookTime] = useState<number>(0);
+  const [bomShelfLife, setBomShelfLife] = useState<number>(0);
+  const [bomInstructions, setBomInstructions] = useState('');
+  const [bomSteps, setBomSteps] = useState<{ stepNumber: number; title: string; description: string; timeMinutes: number; equipmentNeeded: string[] }[]>([]);
 
   // Form States - Procurement
   const [procSupplier, setProcSupplier] = useState('');
@@ -69,6 +75,8 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
   const [prodNormalScrap, setProdNormalScrap] = useState<number>(0);
   const [prodAbnormalScrap, setProdAbnormalScrap] = useState<number>(0);
   const [prodNotes, setProdNotes] = useState('');
+  const [prodChecklist, setProdChecklist] = useState<{ stepNumber: number; completed: boolean }[]>([]);
+  const [prodScrapAlert, setProdScrapAlert] = useState<boolean>(false);
 
   // Form States - Quick Material Creation
   const [showQuickMaterialModal, setShowQuickMaterialModal] = useState(false);
@@ -198,7 +206,13 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
     try {
       await api.saveBOM({
         finishedProductId: selectedFinishedProduct,
-        items: bomItems
+        items: bomItems,
+        version: bomVersion,
+        preparationTimeMinutes: bomPrepTime,
+        cookingTimeMinutes: bomCookTime,
+        shelfLifeDays: bomShelfLife,
+        instructions: bomInstructions,
+        steps: bomSteps
       });
       alert('Бүтээгдэхүүний Орц (BOM) амжилттай хадгалагдаж, нэгж өртөг шинэчлэгдлээ.');
       setShowBomModal(false);
@@ -247,7 +261,9 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
         fixedOverheadCost: prodOverhead,
         normalScrapAmount: prodNormalScrap,
         abnormalScrapAmount: prodAbnormalScrap,
-        notes: prodNotes
+        notes: prodNotes,
+        checklistStatus: prodChecklist,
+        scrapAnalysisAlert: prodScrapAlert
       });
       alert('Үйлдвэрлэлийн бүртгэл амжилттай хийгдэж, орцын ТЭМ/Сав баглаа хасагдан, нэгж бодит өртөг бодогдон агуулахад хүлээн авагдлаа.');
       setShowProductionModal(false);
@@ -913,10 +929,26 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
                   onChange={(e) => {
                     setSelectedFinishedProduct(e.target.value);
                     const existing = boms.find(b => b.finishedProductId === e.target.value);
-                    if (existing && existing.items) {
-                      setBomItems(existing.items.map((i: any) => ({ ingredientId: i.ingredientId, quantityPerUnit: i.quantityPerUnit })));
+                    if (existing) {
+                      if (existing.items) {
+                        setBomItems(existing.items.map((i: any) => ({ ingredientId: i.ingredientId, quantityPerUnit: i.quantityPerUnit })));
+                      } else {
+                        setBomItems([]);
+                      }
+                      setBomVersion(existing.version || 'v1.0');
+                      setBomPrepTime(existing.preparationTimeMinutes || 0);
+                      setBomCookTime(existing.cookingTimeMinutes || 0);
+                      setBomShelfLife(existing.shelfLifeDays || 0);
+                      setBomInstructions(existing.instructions || '');
+                      setBomSteps(existing.steps || []);
                     } else {
                       setBomItems([]);
+                      setBomVersion('v1.0');
+                      setBomPrepTime(0);
+                      setBomCookTime(0);
+                      setBomShelfLife(0);
+                      setBomInstructions('');
+                      setBomSteps([]);
                     }
                   }}
                   className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900"
@@ -1015,6 +1047,64 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
                       Одоогийн байдлаар орц сонгоогүй байна.
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* Tech Card Extended Fields */}
+              <div className="border-t border-slate-100 pt-4 mt-4 space-y-4">
+                <h4 className="text-sm font-bold text-slate-800 flex items-center gap-1.5"><FileSpreadsheet className="w-4 h-4 text-blue-600"/> Технологийн Картын Мэдээлэл</h4>
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Хувилбар (Version)</label>
+                    <input type="text" value={bomVersion} onChange={e => setBomVersion(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-xs" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Бэлтгэх хугацаа (мин)</label>
+                    <input type="number" value={bomPrepTime} onChange={e => setBomPrepTime(Number(e.target.value))} className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-xs" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Боловсруулах хугацаа (мин)</label>
+                    <input type="number" value={bomCookTime} onChange={e => setBomCookTime(Number(e.target.value))} className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-xs" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Хадгалах хугацаа (хоног)</label>
+                    <input type="number" value={bomShelfLife} onChange={e => setBomShelfLife(Number(e.target.value))} className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-xs" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Ерөнхий зааварчилгаа</label>
+                  <textarea value={bomInstructions} onChange={e => setBomInstructions(e.target.value)} rows={2} className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900" placeholder="Үйлдвэрлэх ерөнхий дараалал..."></textarea>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-bold text-slate-700">Технологийн Алхмууд</label>
+                    <button
+                      type="button"
+                      onClick={() => setBomSteps([...bomSteps, { stepNumber: bomSteps.length + 1, title: '', description: '', timeMinutes: 0, equipmentNeeded: [] }])}
+                      className="text-xs text-emerald-600 font-bold hover:underline flex items-center gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Алхам нэмэх
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {bomSteps.map((step, idx) => (
+                      <div key={idx} className="flex gap-2 items-start bg-slate-50 p-2 rounded-lg border border-slate-100">
+                        <span className="text-[10px] font-bold text-slate-400 mt-2">#{idx + 1}</span>
+                        <div className="flex-1 space-y-2">
+                          <input type="text" placeholder="Алхмын нэр" value={step.title} onChange={e => { const s = [...bomSteps]; s[idx].title = e.target.value; setBomSteps(s); }} className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs" />
+                          <textarea placeholder="Дэлгэрэнгүй тайлбар..." value={step.description} onChange={e => { const s = [...bomSteps]; s[idx].description = e.target.value; setBomSteps(s); }} className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs" rows={1}></textarea>
+                          <div className="flex gap-2">
+                            <input type="number" placeholder="Хугацаа (мин)" value={step.timeMinutes || ''} onChange={e => { const s = [...bomSteps]; s[idx].timeMinutes = Number(e.target.value); setBomSteps(s); }} className="w-24 bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs" />
+                            <input type="text" placeholder="Тоног төхөөрөмж (таслалаар)" value={step.equipmentNeeded.join(',')} onChange={e => { const s = [...bomSteps]; s[idx].equipmentNeeded = e.target.value.split(','); setBomSteps(s); }} className="flex-1 bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs" />
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => setBomSteps(bomSteps.filter((_, i) => i !== idx))} className="text-red-500 hover:text-red-700 p-1">&times;</button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -1162,7 +1252,16 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
                 <label className="block text-xs font-bold text-slate-700 mb-1">Үйлдвэрлэх Бэлэн Бүтээгдэхүүн *</label>
                 <select
                   value={prodFinishedProductId}
-                  onChange={(e) => setProdFinishedProductId(e.target.value)}
+                  onChange={(e) => {
+                    const productId = e.target.value;
+                    setProdFinishedProductId(productId);
+                    const bom = boms.find(b => b.finishedProductId === productId);
+                    if (bom && bom.steps) {
+                      setProdChecklist(bom.steps.map((s: any) => ({ stepNumber: s.stepNumber, title: s.title, completed: false })));
+                    } else {
+                      setProdChecklist([]);
+                    }
+                  }}
                   className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900"
                   required
                 >
@@ -1208,7 +1307,13 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Хувийн бус хорогдол (₮)</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-2">
+                    Хувийн бус хорогдол (₮)
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <input type="checkbox" checked={prodScrapAlert} onChange={e => setProdScrapAlert(e.target.checked)} className="w-3 h-3 text-red-600 rounded border-slate-300" />
+                      <span className="text-[10px] text-red-600 font-normal">Анхааруулга үүсгэх (Alert)</span>
+                    </div>
+                  </label>
                   <input
                     type="number"
                     placeholder="Нормт бус алдагдал"
@@ -1218,6 +1323,31 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
                   />
                 </div>
               </div>
+
+              {prodChecklist.length > 0 && (
+                <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 space-y-3">
+                  <h4 className="text-sm font-bold text-slate-800 flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-600"/> Технологийн Картын Хяналтын Хуудас (Checklist)</h4>
+                  <div className="space-y-2">
+                    {prodChecklist.map((step, idx) => (
+                      <label key={idx} className="flex items-start gap-2 cursor-pointer p-2 rounded hover:bg-white transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={step.completed}
+                          onChange={e => {
+                            const newChecklist = [...prodChecklist];
+                            newChecklist[idx].completed = e.target.checked;
+                            setProdChecklist(newChecklist);
+                          }}
+                          className="w-4 h-4 text-emerald-600 rounded border-slate-300 mt-0.5"
+                        />
+                        <span className={`text-xs ${step.completed ? 'text-slate-400 line-through' : 'text-slate-700 font-medium'}`}>
+                          Алхам {step.stepNumber}: {step.title || 'Тодорхойгүй алхам'}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Тэмдэглэл / Парцын тайлбар</label>

@@ -855,6 +855,9 @@ app.get('/api/boms', authenticate(), async (req, res) => {
         finishedProduct: true,
         items: {
           include: { ingredient: true }
+        },
+        steps: {
+          orderBy: { stepNumber: 'asc' }
         }
       },
       orderBy: { createdAt: 'desc' }
@@ -878,7 +881,17 @@ app.post('/api/boms', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE']), as
       retailMarginRate,
       calculatedUnitCost,
       suggestedRetailPrice,
-      items
+      items,
+      version,
+      isApproved,
+      preparationTimeMinutes,
+      cookingTimeMinutes,
+      shelfLifeDays,
+      instructions,
+      mediaUrls,
+      allergens,
+      nutritionInfo,
+      steps
     } = req.body;
     
     // Check if BOM exists for finishedProduct
@@ -896,12 +909,22 @@ app.post('/api/boms', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE']), as
       retailMarginRate: Number(retailMarginRate || 32),
       calculatedUnitCost: Number(calculatedUnitCost || 0),
       suggestedRetailPrice: Number(suggestedRetailPrice || 0),
+      version: version || 'v1.0',
+      isApproved: Boolean(isApproved),
+      preparationTimeMinutes: Number(preparationTimeMinutes || 0),
+      cookingTimeMinutes: Number(cookingTimeMinutes || 0),
+      shelfLifeDays: Number(shelfLifeDays || 0),
+      instructions,
+      mediaUrls: Array.isArray(mediaUrls) ? mediaUrls : [],
+      allergens: Array.isArray(allergens) ? allergens : [],
+      nutritionInfo,
     };
 
     let bom;
     if (existing) {
-      // Update BOM items
+      // Update BOM items and steps
       await prisma.bOMItem.deleteMany({ where: { bomId: existing.id } });
+      await prisma.techCardStep.deleteMany({ where: { bomId: existing.id } });
       bom = await prisma.bOM.update({
         where: { id: existing.id },
         data: {
@@ -914,11 +937,22 @@ app.post('/api/boms', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE']), as
               shrinkagePercent: Number(item.shrinkagePercent || 0),
               itemCategory: item.itemCategory || 'RAW_MATERIAL'
             }))
+          },
+          steps: {
+            create: (steps || []).map((step: any, idx: number) => ({
+              stepNumber: Number(step.stepNumber || idx + 1),
+              title: step.title || `Алхам ${idx + 1}`,
+              description: step.description,
+              timeMinutes: Number(step.timeMinutes || 0),
+              temperature: step.temperature ? Number(step.temperature) : null,
+              equipmentNeeded: Array.isArray(step.equipmentNeeded) ? step.equipmentNeeded : []
+            }))
           }
         },
         include: {
           finishedProduct: true,
-          items: { include: { ingredient: true } }
+          items: { include: { ingredient: true } },
+          steps: { orderBy: { stepNumber: 'asc' } }
         }
       });
     } else {
@@ -934,11 +968,22 @@ app.post('/api/boms', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE']), as
               shrinkagePercent: Number(item.shrinkagePercent || 0),
               itemCategory: item.itemCategory || 'RAW_MATERIAL'
             }))
+          },
+          steps: {
+            create: (steps || []).map((step: any, idx: number) => ({
+              stepNumber: Number(step.stepNumber || idx + 1),
+              title: step.title || `Алхам ${idx + 1}`,
+              description: step.description,
+              timeMinutes: Number(step.timeMinutes || 0),
+              temperature: step.temperature ? Number(step.temperature) : null,
+              equipmentNeeded: Array.isArray(step.equipmentNeeded) ? step.equipmentNeeded : []
+            }))
           }
         },
         include: {
           finishedProduct: true,
-          items: { include: { ingredient: true } }
+          items: { include: { ingredient: true } },
+          steps: { orderBy: { stepNumber: 'asc' } }
         }
       });
     }
@@ -1189,7 +1234,9 @@ app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER']),
       normalScrapAmount,
       abnormalScrapAmount,
       notes,
-      customIngredients
+      customIngredients,
+      checklistStatus,
+      scrapAnalysisAlert
     } = req.body;
 
     const qProduced = Number(quantityProduced || 0);
@@ -1378,6 +1425,8 @@ app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER']),
           totalProductionCost,
           calculatedUnitCost,
           notes,
+          checklistStatus: checklistStatus ? JSON.stringify(checklistStatus) : null,
+          scrapAnalysisAlert: Boolean(scrapAnalysisAlert),
           items: { create: batchItemsData }
         },
         include: {

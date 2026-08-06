@@ -85,6 +85,17 @@ export interface BOMItem {
   itemCategory?: 'RAW_MATERIAL' | 'PACKAGING' | 'AUXILIARY';
 }
 
+export interface TechCardStep {
+  id: string;
+  bomId: string;
+  stepNumber: number;
+  title: string;
+  description?: string;
+  timeMinutes: number;
+  temperature?: number;
+  equipmentNeeded: string[];
+}
+
 export interface BOM {
   id: string;
   finishedProductId: string;
@@ -98,6 +109,19 @@ export interface BOM {
   retailMarginRate?: number;
   calculatedUnitCost?: number;
   suggestedRetailPrice?: number;
+  
+  // Tech Card Extensions
+  version?: string;
+  isApproved?: boolean;
+  preparationTimeMinutes?: number;
+  cookingTimeMinutes?: number;
+  shelfLifeDays?: number;
+  instructions?: string;
+  mediaUrls?: string[];
+  allergens?: string[];
+  nutritionInfo?: string;
+  steps?: TechCardStep[];
+
   items: BOMItem[];
   createdAt: string;
   updatedAt: string;
@@ -173,6 +197,11 @@ export interface ProductionBatch {
   totalProductionCost: number;
   calculatedUnitCost: number;
   notes?: string;
+  
+  // Tech Card Execution
+  checklistStatus?: string;
+  scrapAnalysisAlert?: boolean;
+
   items: ProductionBatchItem[];
   createdAt: string;
   updatedAt: string;
