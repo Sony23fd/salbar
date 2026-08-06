@@ -427,13 +427,6 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
       {/* TAB 2: CONSOLIDATED EXECUTIVE SUMMARY (EXCEL MATRIX STYLE) */}
       {activeTab === 'EXECUTIVE_SUMMARY' && (
         <div className="space-y-6 animate-in fade-in duration-200">
-          <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-start gap-3">
-            <Info className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-900 leading-relaxed">
-              Энэхүү санхүүгийн дашборд нь таны оруулсан <strong>Excel маягтын бүтцийн дагуу</strong> Татан авалт ➔ Үйлдвэрт олгосон ТЭМ ➔ Тогтмол зардал & Хорогдол ➔ Бэлэн бүтээгдэхүүн ба Борлуулалтын ашгийн нэгдсэн тооцооллыг нэг дороос цогцоор нь харуулна.
-            </p>
-          </div>
-
           {/* Matrix Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
             {/* Section 1: Procurement */}
