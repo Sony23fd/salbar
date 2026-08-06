@@ -20,6 +20,7 @@ enum Role {
   ADMIN
   WAREHOUSE_WORKER
   DELIVERY_DRIVER
+  FINANCE
 }
 
 enum BranchType {

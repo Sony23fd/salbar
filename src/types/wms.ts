@@ -2,7 +2,7 @@
 // Types & Interfaces: WMS Domain Models
 // ==========================================
 
-export type Role = 'ADMIN' | 'WAREHOUSE_WORKER' | 'DELIVERY_DRIVER';
+export type Role = 'ADMIN' | 'WAREHOUSE_WORKER' | 'DELIVERY_DRIVER' | 'FINANCE';
 
 export type OrderStatus =
   | 'PENDING'

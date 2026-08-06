@@ -26,19 +26,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   };
 
+  const isDriver = currentUser.role === 'DELIVERY_DRIVER';
+  const isFinance = currentUser.role === 'FINANCE';
+  const isAdmin = currentUser.role === 'ADMIN';
+
   const navItems = [
-    { id: 'dashboard', icon: Building2, label: 'Хяналтын самбар', badge: inactiveBranchCount > 0 && currentUser.role === 'ADMIN' ? inactiveBranchCount : null, badgeColor: 'bg-amber-500' },
-    { id: 'tasks', icon: ClipboardList, label: 'Ажлын төлөвлөгөө', iconColor: 'text-indigo-500' },
-    ...(currentUser.role !== 'DELIVERY_DRIVER' ? [{ id: 'inventory', icon: Package, label: 'Агуулах ба Бараа' }] : []),
-    ...(currentUser.role !== 'DELIVERY_DRIVER' ? [{ id: 'materials', icon: Boxes, label: 'ТЭМ & Сав баглаа', iconColor: 'text-purple-500' }] : []),
-    ...(currentUser.role !== 'DELIVERY_DRIVER' ? [{ id: 'manufacturing', icon: FileSpreadsheet, label: 'Үйлдвэрлэл & Санхүү', iconColor: 'text-amber-500' }] : []),
-    ...(currentUser.role !== 'DELIVERY_DRIVER' ? [{ id: 'orders', icon: ShoppingCart, label: 'Салбарын захиалга' }] : []),
-    { id: 'deliveries', icon: Truck, label: 'Хүргэлт & Түгээлт' },
-    ...(currentUser.role === 'ADMIN' ? [{ id: 'branches', icon: ShieldAlert, label: 'Салбарын идэвх' }] : []),
-    ...(currentUser.role === 'ADMIN' ? [{ id: 'categories', icon: Package, label: 'Ангилал', iconColor: 'text-orange-500' }] : []),
-    ...(currentUser.role !== 'DELIVERY_DRIVER' ? [{ id: 'reports', icon: FileText, label: 'Хөдөлгөөн & Тайлан', iconColor: 'text-emerald-500' }] : []),
-    ...(currentUser.role === 'ADMIN' ? [{ id: 'users', icon: ShieldAlert, label: 'Ажилчдын удирдлага', iconColor: 'text-indigo-500' }] : []),
-    ...(currentUser.role === 'ADMIN' ? [{ id: 'audit', icon: History, label: 'Аудит лог' }] : []),
+    { id: 'dashboard', icon: Building2, label: 'Хяналтын самбар', badge: inactiveBranchCount > 0 && isAdmin ? inactiveBranchCount : null, badgeColor: 'bg-amber-500' },
+    ...(!isDriver && !isFinance ? [{ id: 'tasks', icon: ClipboardList, label: 'Ажлын төлөвлөгөө', iconColor: 'text-indigo-500' }] : []),
+    ...(!isDriver && !isFinance ? [{ id: 'inventory', icon: Package, label: 'Агуулах ба Бараа' }] : []),
+    ...(!isDriver ? [{ id: 'materials', icon: Boxes, label: 'ТЭМ & Сав баглаа', iconColor: 'text-purple-500' }] : []),
+    ...(!isDriver ? [{ id: 'manufacturing', icon: FileSpreadsheet, label: 'Үйлдвэрлэл & Санхүү', iconColor: 'text-amber-500' }] : []),
+    ...(!isDriver && !isFinance ? [{ id: 'orders', icon: ShoppingCart, label: 'Салбарын захиалга' }] : []),
+    ...(!isFinance ? [{ id: 'deliveries', icon: Truck, label: 'Хүргэлт & Түгээлт' }] : []),
+    ...(isAdmin ? [{ id: 'branches', icon: ShieldAlert, label: 'Салбарын идэвх' }] : []),
+    ...(isAdmin ? [{ id: 'categories', icon: Package, label: 'Ангилал', iconColor: 'text-orange-500' }] : []),
+    ...(!isDriver ? [{ id: 'reports', icon: FileText, label: 'Хөдөлгөөн & Тайлан', iconColor: 'text-emerald-500' }] : []),
+    ...(isAdmin ? [{ id: 'users', icon: ShieldAlert, label: 'Ажилчдын удирдлага', iconColor: 'text-indigo-500' }] : []),
+    ...(isAdmin ? [{ id: 'audit', icon: History, label: 'Аудит лог' }] : []),
   ];
 
   return (

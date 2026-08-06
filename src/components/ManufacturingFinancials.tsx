@@ -75,7 +75,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
   const [matUnitPrice, setMatUnitPrice] = useState<number | ''>(0);
   const [matUnit, setMatUnit] = useState('кг');
 
-  const isAdminOrWorker = currentUser.role === 'ADMIN' || currentUser.role === 'WAREHOUSE_WORKER';
+  const isAdminOrWorker = currentUser.role === 'ADMIN' || currentUser.role === 'WAREHOUSE_WORKER' || currentUser.role === 'FINANCE';
 
   const handleQuickCreateMaterial = async (e: React.FormEvent) => {
     e.preventDefault();

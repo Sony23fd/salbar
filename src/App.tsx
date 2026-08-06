@@ -26,6 +26,11 @@ const resolveInitialTab = (userRole?: string): string => {
     if (candidate !== 'deliveries' && candidate !== 'tasks') {
       return 'deliveries';
     }
+  } else if (userRole === 'FINANCE') {
+    const allowedForFinance = ['manufacturing', 'materials', 'reports', 'dashboard'];
+    if (!allowedForFinance.includes(candidate)) {
+      return 'manufacturing';
+    }
   } else if (userRole === 'WAREHOUSE_WORKER') {
     const adminOnly = ['branches', 'categories', 'users', 'audit'];
     if (adminOnly.includes(candidate)) {

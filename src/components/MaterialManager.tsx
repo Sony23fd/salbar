@@ -52,7 +52,7 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const canEdit = currentUser.role === 'ADMIN' || currentUser.role === 'WAREHOUSE_WORKER';
+  const canEdit = currentUser.role === 'ADMIN' || currentUser.role === 'WAREHOUSE_WORKER' || currentUser.role === 'FINANCE';
 
   // Material Types Mongolian Names
   const materialTypeNames: Record<MaterialType, string> = {
