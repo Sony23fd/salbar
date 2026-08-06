@@ -380,7 +380,7 @@ app.get('/api/products', authenticate(), async (req, res) => {
   res.json(products);
 });
 
-app.post('/api/products', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async (req, res) => {
+app.post('/api/products', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE']), async (req, res) => {
   try {
     const data = req.body;
     const newProduct = await prisma.product.create({
@@ -404,7 +404,7 @@ app.post('/api/products', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async (re
   }
 });
 
-app.put('/api/products/:id', authenticate(['ADMIN']), async (req, res) => {
+app.put('/api/products/:id', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE']), async (req, res) => {
   try {
     const data = req.body;
     const updated = await prisma.product.update({
@@ -439,7 +439,7 @@ app.put('/api/products/:id/deactivate', authenticate(['ADMIN']), async (req, res
   }
 });
 
-app.post('/api/products/replenish', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async (req, res) => {
+app.post('/api/products/replenish', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE']), async (req, res) => {
   const { productId, quantityToAdd, userId, notes, isAdjustment } = req.body;
   try {
     const updated = await prisma.$transaction(async (tx) => {
@@ -476,7 +476,7 @@ app.post('/api/products/replenish', authenticate(['ADMIN', 'WAREHOUSE_WORKER']),
 });
 
 // Reports
-app.get('/api/reports/transactions', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async (req, res) => {
+app.get('/api/reports/transactions', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE']), async (req, res) => {
   try {
     const transactions = await prisma.inventoryTransaction.findMany({
       include: {

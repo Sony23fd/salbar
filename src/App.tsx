@@ -76,11 +76,16 @@ export default function App() {
       setOrders(loadedOrders);
       setInactiveAlerts(loadedInactive);
 
-      if (!currentUser && loadedUsers.length > 0) {
-        setCurrentUser(loadedUsers[0]);
+      // Sync active currentUser state with updated DB record
+      if (currentUser) {
+        const matchingUser = loadedUsers.find(u => u.id === currentUser.id || u.email === currentUser.email);
+        if (matchingUser) {
+          setCurrentUser(matchingUser);
+          localStorage.setItem('user', JSON.stringify(matchingUser));
+        }
       }
     } catch (err: any) {
-      if (err.message.includes('Unauthorized') || err.message.includes('Forbidden')) {
+      if (err.message.includes('Unauthorized') || err.message.includes('No token provided')) {
         handleLogout();
       } else {
         console.error("Failed to load data:", err);
