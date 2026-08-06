@@ -16,6 +16,25 @@ import { UserManager } from './components/UserManager';
 import { ManufacturingFinancials } from './components/ManufacturingFinancials';
 import { Login } from './components/Login';
 
+const resolveInitialTab = (userRole?: string): string => {
+  const hash = window.location.hash.replace('#', '');
+  const saved = localStorage.getItem('activeTab');
+  const candidate = hash || saved || 'dashboard';
+
+  if (userRole === 'DELIVERY_DRIVER') {
+    if (candidate !== 'deliveries' && candidate !== 'tasks') {
+      return 'deliveries';
+    }
+  } else if (userRole === 'WAREHOUSE_WORKER') {
+    const adminOnly = ['branches', 'categories', 'users', 'audit'];
+    if (adminOnly.includes(candidate)) {
+      return 'dashboard';
+    }
+  }
+
+  return candidate;
+};
+
 export default function App() {
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -24,10 +43,18 @@ export default function App() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [inactiveAlerts, setInactiveAlerts] = useState<InactiveBranchAlert[]>([]);
 
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  const [activeTab, setActiveTab] = useState<string>(() => resolveInitialTab());
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedDeliveryOrder, setSelectedDeliveryOrder] = useState<Order | null>(null);
   const [presetBranchOrder, setPresetBranchOrder] = useState<string | undefined>(undefined);
+
+  const changeTab = (tab: string) => {
+    setActiveTab(tab);
+    localStorage.setItem('activeTab', tab);
+    if (window.location.hash !== `#${tab}`) {
+      window.location.hash = tab;
+    }
+  };
 
   const reloadData = async () => {
     try {
@@ -63,32 +90,48 @@ export default function App() {
       try {
         const user = JSON.parse(userStr);
         setCurrentUser(user);
-        if (user.role === 'DELIVERY_DRIVER' && activeTab === 'dashboard') {
-          setActiveTab('deliveries');
+        
+        const tabToSet = resolveInitialTab(user.role);
+        setActiveTab(tabToSet);
+        localStorage.setItem('activeTab', tabToSet);
+        if (window.location.hash !== `#${tabToSet}`) {
+          window.location.hash = tabToSet;
         }
+
         reloadData();
       } catch (e) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
       }
     }
+
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash) {
+        setActiveTab(hash);
+        localStorage.setItem('activeTab', hash);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
   const handleLoginSuccess = (token: string, user: User) => {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
     setCurrentUser(user);
-    if (user.role === 'DELIVERY_DRIVER') {
-      setActiveTab('deliveries');
-    } else {
-      setActiveTab('dashboard');
-    }
+    
+    const initialTab = resolveInitialTab(user.role);
+    changeTab(initialTab);
     reloadData();
   };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('activeTab');
+    window.location.hash = '';
     setCurrentUser(null);
     setActiveTab('dashboard');
   };
@@ -102,7 +145,7 @@ export default function App() {
 
   const handleQuickOrderForBranch = (branchId: string) => {
     setPresetBranchOrder(branchId);
-    setActiveTab('orders');
+    changeTab('orders');
   };
 
   const handleSimulateActivity = (branchId: string) => {
@@ -122,7 +165,7 @@ export default function App() {
       <Sidebar
         currentUser={currentUser}
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={changeTab}
         inactiveBranchCount={inactiveAlerts.length}
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
@@ -152,7 +195,7 @@ export default function App() {
                 branches={branches}
                 inactiveAlerts={inactiveAlerts}
                 currentUser={currentUser}
-                onNavigateTab={setActiveTab}
+                onNavigateTab={changeTab}
                 onOpenDeliveryModal={(ord) => setSelectedDeliveryOrder(ord)}
                 onQuickOrder={handleQuickOrderForBranch}
                 onSimulateActivity={handleSimulateActivity}
@@ -164,7 +207,7 @@ export default function App() {
                 currentUser={currentUser}
                 allUsers={users}
                 onRefresh={reloadData}
-                onNavigateTab={setActiveTab}
+                onNavigateTab={changeTab}
               />
             )}
 
