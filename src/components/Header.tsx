@@ -14,6 +14,7 @@ interface HeaderProps {
 const tabTitles: Record<string, string> = {
   dashboard: 'Хяналтын самбар',
   inventory: 'Агуулах ба Бараа',
+  materials: 'ТЭМ & Сав баглаа',
   manufacturing: 'Үйлдвэрлэл & Санхүү',
   orders: 'Салбарын захиалга',
   deliveries: 'Хүргэлт & Түгээлт',

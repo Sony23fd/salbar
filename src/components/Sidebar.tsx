@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building2, Package, ShoppingCart, Truck, ShieldAlert, History, X, FileText, ClipboardList, FileSpreadsheet } from 'lucide-react';
+import { Building2, Package, ShoppingCart, Truck, ShieldAlert, History, X, FileText, ClipboardList, FileSpreadsheet, Boxes } from 'lucide-react';
 import { User } from '../types/wms';
 
 interface SidebarProps {
@@ -30,6 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'dashboard', icon: Building2, label: 'Хяналтын самбар', badge: inactiveBranchCount > 0 && currentUser.role === 'ADMIN' ? inactiveBranchCount : null, badgeColor: 'bg-amber-500' },
     { id: 'tasks', icon: ClipboardList, label: 'Ажлын төлөвлөгөө', iconColor: 'text-indigo-500' },
     ...(currentUser.role !== 'DELIVERY_DRIVER' ? [{ id: 'inventory', icon: Package, label: 'Агуулах ба Бараа' }] : []),
+    ...(currentUser.role !== 'DELIVERY_DRIVER' ? [{ id: 'materials', icon: Boxes, label: 'ТЭМ & Сав баглаа', iconColor: 'text-purple-500' }] : []),
     ...(currentUser.role !== 'DELIVERY_DRIVER' ? [{ id: 'manufacturing', icon: FileSpreadsheet, label: 'Үйлдвэрлэл & Санхүү', iconColor: 'text-amber-500' }] : []),
     ...(currentUser.role !== 'DELIVERY_DRIVER' ? [{ id: 'orders', icon: ShoppingCart, label: 'Салбарын захиалга' }] : []),
     { id: 'deliveries', icon: Truck, label: 'Хүргэлт & Түгээлт' },

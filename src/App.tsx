@@ -5,6 +5,7 @@ import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { AdminDashboard } from './components/AdminDashboard';
 import { InventoryManager } from './components/InventoryManager';
+import { MaterialManager } from './components/MaterialManager';
 import { OrderManager } from './components/OrderManager';
 import { BranchManager } from './components/BranchManager';
 import { AuditLogExplorer } from './components/AuditLogExplorer';
@@ -213,6 +214,14 @@ export default function App() {
 
             {activeTab === 'inventory' && currentUser.role !== 'DELIVERY_DRIVER' && (
               <InventoryManager
+                products={products}
+                currentUser={currentUser}
+                onRefresh={reloadData}
+              />
+            )}
+
+            {activeTab === 'materials' && currentUser.role !== 'DELIVERY_DRIVER' && (
+              <MaterialManager
                 products={products}
                 currentUser={currentUser}
                 onRefresh={reloadData}

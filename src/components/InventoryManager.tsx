@@ -55,12 +55,12 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
   const categoryOptions = Array.from(new Set(products.map((p) => p.category?.name || 'Бусад')));
 
   const filteredProducts = products.filter((p) => {
+    const isFinishedGood = !p.materialType || p.materialType === 'FINISHED_GOOD';
     const matchesSearch =
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.sku.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCat = categoryFilter === 'ALL' || (p.category?.name || 'Бусад') === categoryFilter;
-    const matchesMaterial = materialFilter === 'ALL' || (p.materialType || 'FINISHED_GOOD') === materialFilter;
-    return matchesSearch && matchesCat && matchesMaterial;
+    return isFinishedGood && matchesSearch && matchesCat;
   });
 
   const handleCreateProduct = async (e: React.FormEvent) => {
