@@ -75,6 +75,7 @@ model User {
   email           String         @unique
   password        String         @default("$2b$10$Epz0oN4hO3X5zY8A8R.5O.Xk7H/qF9OqHkZ1E/E8i2t9h1I9Y4Yq2") // Default to "password123" for existing rows, though we'll update seed
   role            Role           @default(WAREHOUSE_WORKER)
+  permissions     String[]       @default([])
   isActive        Boolean        @default(true)
   createdOrders        Order[]                @relation("OrderCreator")
   deliveredOrders      Order[]                @relation("OrderDriver")

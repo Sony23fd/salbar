@@ -104,20 +104,20 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
 });
 
 // Users
-app.get('/api/users', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'DELIVERY_DRIVER']), async (req, res) => {
+app.get('/api/users', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'DELIVERY_DRIVER', 'FINANCE']), async (req, res) => {
   const users = await prisma.user.findMany({
     where: { isActive: true },
-    select: { id: true, name: true, email: true, role: true, isActive: true } // Exclude password
+    select: { id: true, name: true, email: true, role: true, permissions: true, isActive: true } // Exclude password
   });
   res.json(users);
 });
 
 app.post('/api/users', authenticate(['ADMIN']), async (req, res) => {
-  const { name, email, password, role } = req.body;
+  const { name, email, password, role, permissions } = req.body;
   try {
     const hashedPassword = await bcrypt.hash(password || 'password123', 10);
     const newUser = await prisma.user.create({
-      data: { name, email, password: hashedPassword, role }
+      data: { name, email, password: hashedPassword, role, permissions: permissions || [] }
     });
     const { password: _, ...userWithoutPassword } = newUser;
     res.json(userWithoutPassword);
@@ -128,9 +128,12 @@ app.post('/api/users', authenticate(['ADMIN']), async (req, res) => {
 
 app.put('/api/users/:id', authenticate(['ADMIN']), async (req, res) => {
   const { id } = req.params;
-  const { name, email, role, password } = req.body;
+  const { name, email, role, password, permissions } = req.body;
   try {
     const data: any = { name, email, role };
+    if (permissions !== undefined) {
+      data.permissions = permissions;
+    }
     if (password) {
       data.password = await bcrypt.hash(password, 10);
     }
