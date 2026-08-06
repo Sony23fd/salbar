@@ -964,52 +964,92 @@ app.post('/api/procurements', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async
       };
     });
 
-    const result = await prisma.$transaction(async (tx) => {
-      const proc = await tx.procurement.create({
+    const productIds = itemsData.map(i => i.productId);
+    const existingProducts = await prisma.product.findMany({
+      where: { id: { in: productIds } }
+    });
+    const productMap = new Map(existingProducts.map(p => [p.id, p]));
+
+    let proc;
+    try {
+      proc = await prisma.$transaction(async (tx) => {
+        const createdProc = await tx.procurement.create({
+          data: {
+            procurementNo,
+            supplierName,
+            notes,
+            totalAmount,
+            items: { create: itemsData }
+          },
+          include: { items: { include: { product: true } } }
+        });
+
+        for (const item of itemsData) {
+          const prod = productMap.get(item.productId);
+          if (prod) {
+            const newStock = prod.stockQuantity + item.quantity;
+            await tx.product.update({
+              where: { id: item.productId },
+              data: {
+                stockQuantity: newStock,
+                costPrice: item.unitPrice
+              }
+            });
+            await tx.inventoryTransaction.create({
+              data: {
+                productId: item.productId,
+                type: 'INBOUND',
+                quantity: Math.round(item.quantity),
+                previousStock: prod.stockQuantity,
+                newStock: Math.round(newStock),
+                userId: req.user!.id,
+                notes: `Татан авалт #${procurementNo} (${supplierName || 'Нэгдсэн татан авалт'})`
+              }
+            });
+          }
+        }
+        return createdProc;
+      }, { maxWait: 15000, timeout: 30000 });
+    } catch (txErr: any) {
+      console.warn("Transaction failed, using direct sequence fallback:", txErr.message);
+      proc = await prisma.procurement.create({
         data: {
           procurementNo,
           supplierName,
           notes,
           totalAmount,
-          items: {
-            create: itemsData
-          }
+          items: { create: itemsData }
         },
-        include: {
-          items: { include: { product: true } }
-        }
+        include: { items: { include: { product: true } } }
       });
 
-      // Update product stocks and cost price
       for (const item of itemsData) {
-        const prod = await tx.product.findUnique({ where: { id: item.productId } });
+        const prod = productMap.get(item.productId) || await prisma.product.findUnique({ where: { id: item.productId } });
         if (prod) {
           const newStock = prod.stockQuantity + item.quantity;
-          await tx.product.update({
+          await prisma.product.update({
             where: { id: item.productId },
             data: {
               stockQuantity: newStock,
-              costPrice: item.unitPrice // update latest cost price
+              costPrice: item.unitPrice
             }
           });
-          await tx.inventoryTransaction.create({
+          await prisma.inventoryTransaction.create({
             data: {
               productId: item.productId,
               type: 'INBOUND',
-              quantity: item.quantity,
+              quantity: Math.round(item.quantity),
               previousStock: prod.stockQuantity,
-              newStock,
+              newStock: Math.round(newStock),
               userId: req.user!.id,
               notes: `Татан авалт #${procurementNo} (${supplierName || 'Нэгдсэн татан авалт'})`
             }
           });
         }
       }
+    }
 
-      return proc;
-    });
-
-    res.status(201).json(result);
+    res.status(201).json(proc);
   } catch (err) {
     handleApiError(res, err, 400);
   }
@@ -1043,7 +1083,7 @@ app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER']),
       normalScrapAmount,
       abnormalScrapAmount,
       notes,
-      customIngredients // Optional list of ingredients used override; if missing, fetched from BOM
+      customIngredients
     } = req.body;
 
     const qProduced = Number(quantityProduced || 0);
@@ -1053,7 +1093,6 @@ app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER']),
 
     const batchNumber = `BATCH-${Date.now().toString().slice(-6)}`;
 
-    // Resolve ingredients to deduct
     let ingredientsToUse: { ingredientId: string; quantityUsed: number }[] = [];
 
     if (customIngredients && Array.isArray(customIngredients) && customIngredients.length > 0) {
@@ -1062,7 +1101,6 @@ app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER']),
         quantityUsed: Number(i.quantityUsed || 0)
       }));
     } else {
-      // Fetch from BOM
       const bom = await prisma.bOM.findFirst({
         where: { finishedProductId },
         include: { items: true }
@@ -1075,37 +1113,120 @@ app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER']),
       }
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-      let totalMaterialCost = 0;
-      const batchItemsData = [];
+    const ingredientIds = ingredientsToUse.map(i => i.ingredientId);
+    const existingIngredients = await prisma.product.findMany({
+      where: { id: { in: ingredientIds } }
+    });
+    const ingredientMap = new Map(existingIngredients.map(p => [p.id, p]));
 
-      for (const item of ingredientsToUse) {
-        const prod = await tx.product.findUnique({ where: { id: item.ingredientId } });
-        if (!prod) throw new Error(`Материал олдсонгүй (ID: ${item.ingredientId})`);
-        
-        if (prod.stockQuantity < item.quantityUsed) {
-          throw new Error(`Материал '${prod.name}' агуулахын үлдэгдэл хүрэлцэхгүй байна. Хэрэгцээт: ${item.quantityUsed}, Үлдэгдэл: ${prod.stockQuantity}`);
+    const finishedProd = await prisma.product.findUnique({ where: { id: finishedProductId } });
+    if (!finishedProd) return res.status(404).json({ error: 'Бэлэн бүтээгдэхүүн олдсонгүй' });
+
+    let totalMaterialCost = 0;
+    const batchItemsData = [];
+
+    for (const item of ingredientsToUse) {
+      const prod = ingredientMap.get(item.ingredientId);
+      if (!prod) throw new Error(`Материал олдсонгүй (ID: ${item.ingredientId})`);
+      
+      if (prod.stockQuantity < item.quantityUsed) {
+        throw new Error(`Материал '${prod.name}' агуулахын үлдэгдэл хүрэлцэхгүй байна. Хэрэгцээт: ${item.quantityUsed}, Үлдэгдэл: ${prod.stockQuantity}`);
+      }
+
+      const price = Number(prod.costPrice) > 0 ? Number(prod.costPrice) : Number(prod.unitPrice);
+      const itemTotalCost = item.quantityUsed * price;
+      totalMaterialCost += itemTotalCost;
+
+      batchItemsData.push({
+        ingredientId: item.ingredientId,
+        quantityUsed: item.quantityUsed,
+        unitPrice: price,
+        totalPrice: itemTotalCost
+      });
+    }
+
+    const overhead = Number(fixedOverheadCost || 0);
+    const normalScrap = Number(normalScrapAmount || 0);
+    const abnormalScrap = Number(abnormalScrapAmount || 0);
+
+    const totalProductionCost = totalMaterialCost + overhead + normalScrap + abnormalScrap;
+    const calculatedUnitCost = totalProductionCost / qProduced;
+
+    let batch;
+    try {
+      batch = await prisma.$transaction(async (tx) => {
+        for (const item of batchItemsData) {
+          const prod = ingredientMap.get(item.ingredientId)!;
+          const newStock = prod.stockQuantity - item.quantityUsed;
+          await tx.product.update({
+            where: { id: item.ingredientId },
+            data: { stockQuantity: newStock }
+          });
+          await tx.inventoryTransaction.create({
+            data: {
+              productId: item.ingredientId,
+              type: 'OUTBOUND',
+              quantity: Math.round(item.quantityUsed),
+              previousStock: prod.stockQuantity,
+              newStock: Math.round(newStock),
+              userId: req.user!.id,
+              notes: `Үйлдвэрлэлд олгосон ТЭМ/Материал #${batchNumber}`
+            }
+          });
         }
 
-        const price = Number(prod.costPrice) > 0 ? Number(prod.costPrice) : Number(prod.unitPrice);
-        const itemTotalCost = item.quantityUsed * price;
-        totalMaterialCost += itemTotalCost;
-
-        batchItemsData.push({
-          ingredientId: item.ingredientId,
-          quantityUsed: item.quantityUsed,
-          unitPrice: price,
-          totalPrice: itemTotalCost
-        });
-
-        // Deduct material stock
-        const newStock = prod.stockQuantity - item.quantityUsed;
+        const newFinishedStock = finishedProd.stockQuantity + Math.round(qProduced);
         await tx.product.update({
-          where: { id: item.ingredientId },
-          data: { stockQuantity: newStock }
+          where: { id: finishedProductId },
+          data: {
+            stockQuantity: newFinishedStock,
+            costPrice: calculatedUnitCost
+          }
         });
 
         await tx.inventoryTransaction.create({
+          data: {
+            productId: finishedProductId,
+            type: 'INBOUND',
+            quantity: Math.round(qProduced),
+            previousStock: finishedProd.stockQuantity,
+            newStock: newFinishedStock,
+            userId: req.user!.id,
+            notes: `Үйлдвэрлэлээс хүлээн авсан бэлэн бүтээгдэхүүн #${batchNumber} (Өртөг: ₮${calculatedUnitCost.toLocaleString()}/нэгж)`
+          }
+        });
+
+        return await tx.productionBatch.create({
+          data: {
+            batchNumber,
+            finishedProductId,
+            quantityProduced: qProduced,
+            fixedOverheadCost: overhead,
+            normalScrapAmount: normalScrap,
+            abnormalScrapAmount: abnormalScrap,
+            totalMaterialCost,
+            totalProductionCost,
+            calculatedUnitCost,
+            notes,
+            items: { create: batchItemsData }
+          },
+          include: {
+            finishedProduct: true,
+            items: { include: { ingredient: true } }
+          }
+        });
+      }, { maxWait: 15000, timeout: 30000 });
+    } catch (txErr: any) {
+      console.warn("Production Batch transaction failed, using direct sequence fallback:", txErr.message);
+
+      for (const item of batchItemsData) {
+        const prod = ingredientMap.get(item.ingredientId)!;
+        const newStock = prod.stockQuantity - item.quantityUsed;
+        await prisma.product.update({
+          where: { id: item.ingredientId },
+          data: { stockQuantity: newStock }
+        });
+        await prisma.inventoryTransaction.create({
           data: {
             productId: item.ingredientId,
             type: 'OUTBOUND',
@@ -1118,20 +1239,8 @@ app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER']),
         });
       }
 
-      const overhead = Number(fixedOverheadCost || 0);
-      const normalScrap = Number(normalScrapAmount || 0);
-      const abnormalScrap = Number(abnormalScrapAmount || 0);
-
-      const totalProductionCost = totalMaterialCost + overhead + normalScrap + abnormalScrap;
-      const calculatedUnitCost = totalProductionCost / qProduced;
-
-      // Update finished product stock and unit cost
-      const finishedProd = await tx.product.findUnique({ where: { id: finishedProductId } });
-      if (!finishedProd) throw new Error('Бэлэн бүтээгдэхүүн олдсонгүй');
-
       const newFinishedStock = finishedProd.stockQuantity + Math.round(qProduced);
-
-      await tx.product.update({
+      await prisma.product.update({
         where: { id: finishedProductId },
         data: {
           stockQuantity: newFinishedStock,
@@ -1139,7 +1248,7 @@ app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER']),
         }
       });
 
-      await tx.inventoryTransaction.create({
+      await prisma.inventoryTransaction.create({
         data: {
           productId: finishedProductId,
           type: 'INBOUND',
@@ -1151,7 +1260,7 @@ app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER']),
         }
       });
 
-      const batch = await tx.productionBatch.create({
+      batch = await prisma.productionBatch.create({
         data: {
           batchNumber,
           finishedProductId,
@@ -1163,20 +1272,16 @@ app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER']),
           totalProductionCost,
           calculatedUnitCost,
           notes,
-          items: {
-            create: batchItemsData
-          }
+          items: { create: batchItemsData }
         },
         include: {
           finishedProduct: true,
           items: { include: { ingredient: true } }
         }
       });
+    }
 
-      return batch;
-    });
-
-    res.status(201).json(result);
+    res.status(201).json(batch);
   } catch (err: any) {
     handleApiError(res, err, 400);
   }
