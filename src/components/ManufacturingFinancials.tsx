@@ -67,7 +67,42 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
   const [prodAbnormalScrap, setProdAbnormalScrap] = useState<number>(0);
   const [prodNotes, setProdNotes] = useState('');
 
+  // Form States - Quick Material Creation
+  const [showQuickMaterialModal, setShowQuickMaterialModal] = useState(false);
+  const [matName, setMatName] = useState('');
+  const [matSku, setMatSku] = useState('');
+  const [matType, setMatType] = useState<MaterialType>('RAW_MATERIAL');
+  const [matUnitPrice, setMatUnitPrice] = useState<number | ''>(0);
+  const [matUnit, setMatUnit] = useState('кг');
+
   const isAdminOrWorker = currentUser.role === 'ADMIN' || currentUser.role === 'WAREHOUSE_WORKER';
+
+  const handleQuickCreateMaterial = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!matName) return;
+    try {
+      const generatedSku = matSku || `MAT-${Date.now().toString().slice(-6)}`;
+      await api.addProduct({
+        name: matName,
+        sku: generatedSku,
+        materialType: matType,
+        unitPrice: Number(matUnitPrice) || 0,
+        costPrice: Number(matUnitPrice) || 0,
+        stockQuantity: 0,
+        unit: matUnit || 'ш',
+        isActive: true
+      });
+      alert(`Шинэ материал '${matName}' амжилттай бүртгэгдлээ.`);
+      setShowQuickMaterialModal(false);
+      setMatName('');
+      setMatSku('');
+      setMatUnitPrice(0);
+      loadAllData();
+      if (onRefreshProducts) onRefreshProducts();
+    } catch (err: any) {
+      alert(err.message || 'Алдаа гарлаа');
+    }
+  };
 
   const loadAllData = async () => {
     setLoading(true);
@@ -253,10 +288,16 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
         {isAdminOrWorker && (
           <div className="flex items-center gap-2 flex-wrap">
             <button
+              onClick={() => setShowQuickMaterialModal(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition-colors shadow-xs"
+            >
+              <Plus className="w-4 h-4" /> Шинэ ТЭМ / Сав баглаа бүртгэх
+            </button>
+            <button
               onClick={() => setShowProcurementModal(true)}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-xs"
             >
-              <Plus className="w-4 h-4" /> ТЭМ & Сав баглаа татан авах
+              <Truck className="w-4 h-4" /> ТЭМ & Сав баглаа татан авах
             </button>
             <button
               onClick={() => setShowBomModal(true)}
@@ -1194,6 +1235,90 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
                   className="px-5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   Үйлдвэрлэл Бүртгэж Өртөг Бодох
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* MODAL 4: QUICK MATERIAL CREATION MODAL */}
+      {showQuickMaterialModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Plus className="w-5 h-5 text-amber-600" /> Шинэ ТҮҮХИЙ ЭД эсвэл САВ БАГЛАА материал бүртгэх
+              </h3>
+              <button onClick={() => setShowQuickMaterialModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleQuickCreateMaterial} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Материалын Төрөл *</label>
+                <select
+                  value={matType}
+                  onChange={(e) => setMatType(e.target.value as MaterialType)}
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900"
+                  required
+                >
+                  <option value="RAW_MATERIAL">🥛 Түүхий эд материал (Сүү, алим, гурил г.м)</option>
+                  <option value="PACKAGING">📦 Сав баглаа боодол (Уут, хайрцаг, шил г.м)</option>
+                  <option value="AUXILIARY">🛠 Туслах материал (Тос, амтлагч г.м)</option>
+                  <option value="SUPPLY">⚙ Хангамжийн материал</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Материалын Нэр *</label>
+                <input
+                  type="text"
+                  placeholder="д.г: Сүү (Литрийн), Картон хайрцаг (Их)"
+                  value={matName}
+                  onChange={(e) => setMatName(e.target.value)}
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Хэмжих нэгж (кг, л, ш г.м)</label>
+                  <input
+                    type="text"
+                    value={matUnit}
+                    onChange={(e) => setMatUnit(e.target.value)}
+                    placeholder="кг, л, ш, м2..."
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Нэгж худалдан авах үнэ (₮)</label>
+                  <input
+                    type="number"
+                    value={matUnitPrice}
+                    onChange={(e) => setMatUnitPrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                    placeholder="1500"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowQuickMaterialModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200"
+                >
+                  Цуцлах
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  Материал Хадгалах
                 </button>
               </div>
             </form>

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Product, User } from '../types/wms';
+import { Product, User, MaterialType } from '../types/wms';
 import { registerProduct, replenishStock } from '../actions/inventory';
 import { db } from '../lib/db';
 import { api } from '../lib/api';
-import { Package, Search, Plus, RefreshCw, X, ShieldAlert, CheckCircle2, AlertTriangle, ArrowUpRight, ArrowDownRight, Hash, Tag, FileText, Banknote, History, ExternalLink, Pencil, AlertCircle, ClipboardList } from 'lucide-react';
+import { Package, Search, Plus, RefreshCw, X, ShieldAlert, CheckCircle2, AlertTriangle, ArrowUpRight, ArrowDownRight, Hash, Tag, FileText, Banknote, History, ExternalLink, Pencil, AlertCircle, ClipboardList, Layers } from 'lucide-react';
 
 interface InventoryManagerProps {
   products: Product[];
@@ -18,13 +18,14 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const [materialFilter, setMaterialFilter] = useState<string>('ALL');
   const [showAddModal, setShowAddModal] = useState(false);
   const [replenishTarget, setReplenishTarget] = useState<Product | null>(null);
 
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editWarning, setEditWarning] = useState<string | null>(null);
 
-  // Form states for New Product
+  // Form states for New Product / Material
   const [sku, setSku] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -32,6 +33,8 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
   const [stockQuantity, setStockQuantity] = useState<number | ''>('');
   const [minStockLevel, setMinStockLevel] = useState<number | ''>(5);
   const [categoryId, setCategoryId] = useState('');
+  const [materialType, setMaterialType] = useState<MaterialType>('FINISHED_GOOD');
+  const [unit, setUnit] = useState<string>('ш');
   const [categories, setCategories] = useState<{id: string; name: string}[]>([]);
 
   React.useEffect(() => {
@@ -56,7 +59,8 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.sku.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCat = categoryFilter === 'ALL' || (p.category?.name || 'Бусад') === categoryFilter;
-    return matchesSearch && matchesCat;
+    const matchesMaterial = materialFilter === 'ALL' || (p.materialType || 'FINISHED_GOOD') === materialFilter;
+    return matchesSearch && matchesCat && matchesMaterial;
   });
 
   const handleCreateProduct = async (e: React.FormEvent) => {
@@ -67,37 +71,34 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
     setIsSubmitting(true);
 
     try {
-      const response = await registerProduct(
-        {
-          sku,
-          name,
-          description,
-          unitPrice: Number(unitPrice),
-          stockQuantity: Number(stockQuantity),
-          minStockLevel: Number(minStockLevel),
-          categoryId: categoryId || undefined,
-        },
-        currentUser.role
-      );
+      await api.addProduct({
+        sku,
+        name,
+        description,
+        unitPrice: Number(unitPrice),
+        stockQuantity: Number(stockQuantity),
+        minStockLevel: Number(minStockLevel),
+        categoryId: categoryId || undefined,
+        materialType: materialType,
+        unit: unit || 'ш',
+        isActive: true
+      });
 
-      if (!response.success) {
-        setFormError(response.message);
-        if (response.errors) setFieldErrors(response.errors);
-      } else {
-        setFormSuccess('Шинэ бараа амжилттай бүртгэгдлээ!');
-        setTimeout(() => {
-          setShowAddModal(false);
-          setSku('');
-          setName('');
-          setDescription('');
-          setUnitPrice('');
-          setStockQuantity('');
-          setMinStockLevel(5);
-          setCategoryId('');
-          setFormSuccess(null);
-          onRefresh();
-        }, 1200);
-      }
+      setFormSuccess('Шинэ бараа / материал амжилттай бүртгэгдлээ!');
+      setTimeout(() => {
+        setShowAddModal(false);
+        setSku('');
+        setName('');
+        setDescription('');
+        setUnitPrice('');
+        setStockQuantity('');
+        setMinStockLevel(5);
+        setCategoryId('');
+        setMaterialType('FINISHED_GOOD');
+        setUnit('ш');
+        setFormSuccess(null);
+        onRefresh();
+      }, 1200);
     } catch (err: any) {
       setFormError(err.message || 'Алдаа гарлаа.');
     } finally {
@@ -112,6 +113,8 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
     setUnitPrice(prod.unitPrice);
     setMinStockLevel(prod.minStockLevel);
     setCategoryId(prod.categoryId || '');
+    setMaterialType((prod.materialType as MaterialType) || 'FINISHED_GOOD');
+    setUnit(prod.unit || 'ш');
     setEditWarning(null);
     setFormError(null);
     setFormSuccess(null);
@@ -142,9 +145,11 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
         description,
         unitPrice: Number(unitPrice),
         minStockLevel: Number(minStockLevel),
-        categoryId: categoryId || undefined
+        categoryId: categoryId || undefined,
+        materialType: materialType,
+        unit: unit || 'ш'
       });
-      setFormSuccess('Барааны мэдээлэл шинэчлэгдлээ!');
+      setFormSuccess('Бараа / материалын мэдээлэл шинэчлэгдлээ!');
       setTimeout(() => {
         setEditingProduct(null);
         setFormSuccess(null);
@@ -453,6 +458,24 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                 </div>
 
                 <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Бараа / Материалын Төрөл *</label>
+                  <select
+                    value={materialType}
+                    onChange={(e) => setMaterialType(e.target.value as MaterialType)}
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-blue-900 focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="FINISHED_GOOD">📦 Бэлэн бүтээгдэхүүн (Зарах бараа)</option>
+                    <option value="RAW_MATERIAL">🥛 Түүхий эд материал (Орц)</option>
+                    <option value="PACKAGING">📦 Сав баглаа боодол (Орц)</option>
+                    <option value="AUXILIARY">🛠 Туслах материал (Орц)</option>
+                    <option value="SUPPLY">⚙ Хангамжийн материал</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Ангилал</label>
                   <select
                     value={categoryId}
@@ -464,6 +487,17 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Хэмжих нэгж (кг, л, ш г.м)</label>
+                  <input
+                    type="text"
+                    value={unit}
+                    onChange={(e) => setUnit(e.target.value)}
+                    placeholder="ш, кг, л, м2..."
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
               </div>
 
