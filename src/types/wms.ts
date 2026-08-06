@@ -48,17 +48,95 @@ export interface Category {
   updatedAt: string;
 }
 
+export type MaterialType =
+  | 'RAW_MATERIAL'
+  | 'PACKAGING'
+  | 'AUXILIARY'
+  | 'SUPPLY'
+  | 'FINISHED_GOOD';
+
 export interface Product {
   id: string;
   sku: string;
   name: string;
   description?: string;
   unitPrice: number;
+  costPrice?: number;
+  unit?: string;
+  materialType?: MaterialType;
   stockQuantity: number;
   minStockLevel: number;
   isActive: boolean;
   categoryId?: string;
   category?: Category;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BOMItem {
+  id: string;
+  bomId: string;
+  ingredientId: string;
+  ingredient?: Product;
+  quantityPerUnit: number;
+}
+
+export interface BOM {
+  id: string;
+  finishedProductId: string;
+  finishedProduct?: Product;
+  name: string;
+  description?: string;
+  items: BOMItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProcurementItem {
+  id: string;
+  procurementId: string;
+  productId: string;
+  product?: Product;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+export interface Procurement {
+  id: string;
+  procurementNo: string;
+  supplierName?: string;
+  notes?: string;
+  totalAmount: number;
+  items: ProcurementItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProductionBatchItem {
+  id: string;
+  productionBatchId: string;
+  ingredientId: string;
+  ingredient?: Product;
+  quantityUsed: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+export interface ProductionBatch {
+  id: string;
+  batchNumber: string;
+  finishedProductId: string;
+  finishedProduct?: Product;
+  quantityProduced: number;
+  fixedOverheadCost: number;
+  normalScrapAmount: number;
+  abnormalScrapAmount: number;
+  totalMaterialCost: number;
+  totalProductionCost: number;
+  calculatedUnitCost: number;
+  notes?: string;
+  items: ProductionBatchItem[];
   createdAt: string;
   updatedAt: string;
 }

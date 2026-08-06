@@ -13,6 +13,7 @@ import { DeliveryModal } from './components/DeliveryModal';
 import { CategoryManager } from './components/CategoryManager';
 import { ReportsManager } from './components/ReportsManager';
 import { UserManager } from './components/UserManager';
+import { ManufacturingFinancials } from './components/ManufacturingFinancials';
 import { Login } from './components/Login';
 
 export default function App() {
@@ -172,6 +173,13 @@ export default function App() {
                 products={products}
                 currentUser={currentUser}
                 onRefresh={reloadData}
+              />
+            )}
+
+            {activeTab === 'manufacturing' && currentUser.role !== 'DELIVERY_DRIVER' && (
+              <ManufacturingFinancials
+                currentUser={currentUser}
+                onRefreshProducts={reloadData}
               />
             )}
 

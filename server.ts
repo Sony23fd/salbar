@@ -386,6 +386,9 @@ app.post('/api/products', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async (re
         name: data.name,
         description: data.description,
         unitPrice: data.unitPrice,
+        costPrice: data.costPrice || 0,
+        unit: data.unit || 'ш',
+        materialType: data.materialType || 'FINISHED_GOOD',
         stockQuantity: data.stockQuantity,
         minStockLevel: data.minStockLevel || 5,
         categoryId: data.categoryId || null
@@ -407,6 +410,9 @@ app.put('/api/products/:id', authenticate(['ADMIN']), async (req, res) => {
         name: data.name,
         description: data.description,
         unitPrice: data.unitPrice,
+        costPrice: data.costPrice !== undefined ? data.costPrice : undefined,
+        unit: data.unit,
+        materialType: data.materialType,
         minStockLevel: data.minStockLevel,
         categoryId: data.categoryId || null
       },
@@ -832,6 +838,451 @@ app.post('/api/tasks/:id/comments', authenticate(), async (req, res) => {
     res.json(newComment);
   } catch (err) {
     handleApiError(res, err, 400);
+  }
+});
+
+// ==========================================
+// BOM (Bill of Materials / Жор) API Routes
+// ==========================================
+
+app.get('/api/boms', authenticate(), async (req, res) => {
+  try {
+    const boms = await prisma.bOM.findMany({
+      include: {
+        finishedProduct: true,
+        items: {
+          include: { ingredient: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(boms);
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
+
+app.post('/api/boms', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async (req, res) => {
+  try {
+    const { finishedProductId, name, description, items } = req.body; // items: [{ ingredientId, quantityPerUnit }]
+    
+    // Check if BOM exists for finishedProduct
+    const existing = await prisma.bOM.findFirst({
+      where: { finishedProductId }
+    });
+
+    let bom;
+    if (existing) {
+      // Update BOM items
+      await prisma.bOMItem.deleteMany({ where: { bomId: existing.id } });
+      bom = await prisma.bOM.update({
+        where: { id: existing.id },
+        data: {
+          name: name || 'Стандарт Жор',
+          description,
+          items: {
+            create: (items || []).map((item: any) => ({
+              ingredientId: item.ingredientId,
+              quantityPerUnit: Number(item.quantityPerUnit || 0)
+            }))
+          }
+        },
+        include: {
+          finishedProduct: true,
+          items: { include: { ingredient: true } }
+        }
+      });
+    } else {
+      bom = await prisma.bOM.create({
+        data: {
+          finishedProductId,
+          name: name || 'Стандарт Жор',
+          description,
+          items: {
+            create: (items || []).map((item: any) => ({
+              ingredientId: item.ingredientId,
+              quantityPerUnit: Number(item.quantityPerUnit || 0)
+            }))
+          }
+        },
+        include: {
+          finishedProduct: true,
+          items: { include: { ingredient: true } }
+        }
+      });
+    }
+    res.json(bom);
+  } catch (err) {
+    handleApiError(res, err, 400);
+  }
+});
+
+app.delete('/api/boms/:id', authenticate(['ADMIN']), async (req, res) => {
+  try {
+    await prisma.bOM.delete({ where: { id: req.params.id } });
+    res.json({ success: true });
+  } catch (err) {
+    handleApiError(res, err, 400);
+  }
+});
+
+// ==========================================
+// Procurement (Татан авалт) API Routes
+// ==========================================
+
+app.get('/api/procurements', authenticate(), async (req, res) => {
+  try {
+    const procurements = await prisma.procurement.findMany({
+      include: {
+        items: { include: { product: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(procurements);
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
+
+app.post('/api/procurements', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async (req, res) => {
+  try {
+    const { supplierName, notes, items } = req.body; // items: [{ productId, quantity, unitPrice }]
+    
+    const procurementNo = `PROC-${Date.now().toString().slice(-6)}`;
+    
+    let totalAmount = 0;
+    const itemsData = (items || []).map((item: any) => {
+      const q = Number(item.quantity || 0);
+      const p = Number(item.unitPrice || 0);
+      const total = q * p;
+      totalAmount += total;
+      return {
+        productId: item.productId,
+        quantity: q,
+        unitPrice: p,
+        totalPrice: total
+      };
+    });
+
+    const result = await prisma.$transaction(async (tx) => {
+      const proc = await tx.procurement.create({
+        data: {
+          procurementNo,
+          supplierName,
+          notes,
+          totalAmount,
+          items: {
+            create: itemsData
+          }
+        },
+        include: {
+          items: { include: { product: true } }
+        }
+      });
+
+      // Update product stocks and cost price
+      for (const item of itemsData) {
+        const prod = await tx.product.findUnique({ where: { id: item.productId } });
+        if (prod) {
+          const newStock = prod.stockQuantity + item.quantity;
+          await tx.product.update({
+            where: { id: item.productId },
+            data: {
+              stockQuantity: newStock,
+              costPrice: item.unitPrice // update latest cost price
+            }
+          });
+          await tx.inventoryTransaction.create({
+            data: {
+              productId: item.productId,
+              type: 'INBOUND',
+              quantity: item.quantity,
+              previousStock: prod.stockQuantity,
+              newStock,
+              userId: req.user!.id,
+              notes: `Татан авалт #${procurementNo} (${supplierName || 'Нэгдсэн татан авалт'})`
+            }
+          });
+        }
+      }
+
+      return proc;
+    });
+
+    res.status(201).json(result);
+  } catch (err) {
+    handleApiError(res, err, 400);
+  }
+});
+
+// ==========================================
+// Production Batch & Costing API Routes
+// ==========================================
+
+app.get('/api/production-batches', authenticate(), async (req, res) => {
+  try {
+    const batches = await prisma.productionBatch.findMany({
+      include: {
+        finishedProduct: true,
+        items: { include: { ingredient: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(batches);
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
+
+app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async (req, res) => {
+  try {
+    const {
+      finishedProductId,
+      quantityProduced,
+      fixedOverheadCost,
+      normalScrapAmount,
+      abnormalScrapAmount,
+      notes,
+      customIngredients // Optional list of ingredients used override; if missing, fetched from BOM
+    } = req.body;
+
+    const qProduced = Number(quantityProduced || 0);
+    if (qProduced <= 0) {
+      return res.status(400).json({ error: 'Үйлдвэрлэсэн хэмжээ 0-ээс их байх ёстой' });
+    }
+
+    const batchNumber = `BATCH-${Date.now().toString().slice(-6)}`;
+
+    // Resolve ingredients to deduct
+    let ingredientsToUse: { ingredientId: string; quantityUsed: number }[] = [];
+
+    if (customIngredients && Array.isArray(customIngredients) && customIngredients.length > 0) {
+      ingredientsToUse = customIngredients.map((i: any) => ({
+        ingredientId: i.ingredientId,
+        quantityUsed: Number(i.quantityUsed || 0)
+      }));
+    } else {
+      // Fetch from BOM
+      const bom = await prisma.bOM.findFirst({
+        where: { finishedProductId },
+        include: { items: true }
+      });
+      if (bom && bom.items.length > 0) {
+        ingredientsToUse = bom.items.map(item => ({
+          ingredientId: item.ingredientId,
+          quantityUsed: item.quantityPerUnit * qProduced
+        }));
+      }
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      let totalMaterialCost = 0;
+      const batchItemsData = [];
+
+      for (const item of ingredientsToUse) {
+        const prod = await tx.product.findUnique({ where: { id: item.ingredientId } });
+        if (!prod) throw new Error(`Материал олдсонгүй (ID: ${item.ingredientId})`);
+        
+        if (prod.stockQuantity < item.quantityUsed) {
+          throw new Error(`Материал '${prod.name}' агуулахын үлдэгдэл хүрэлцэхгүй байна. Хэрэгцээт: ${item.quantityUsed}, Үлдэгдэл: ${prod.stockQuantity}`);
+        }
+
+        const price = Number(prod.costPrice) > 0 ? Number(prod.costPrice) : Number(prod.unitPrice);
+        const itemTotalCost = item.quantityUsed * price;
+        totalMaterialCost += itemTotalCost;
+
+        batchItemsData.push({
+          ingredientId: item.ingredientId,
+          quantityUsed: item.quantityUsed,
+          unitPrice: price,
+          totalPrice: itemTotalCost
+        });
+
+        // Deduct material stock
+        const newStock = prod.stockQuantity - item.quantityUsed;
+        await tx.product.update({
+          where: { id: item.ingredientId },
+          data: { stockQuantity: newStock }
+        });
+
+        await tx.inventoryTransaction.create({
+          data: {
+            productId: item.ingredientId,
+            type: 'OUTBOUND',
+            quantity: Math.round(item.quantityUsed),
+            previousStock: prod.stockQuantity,
+            newStock: Math.round(newStock),
+            userId: req.user!.id,
+            notes: `Үйлдвэрлэлд олгосон ТЭМ/Материал #${batchNumber}`
+          }
+        });
+      }
+
+      const overhead = Number(fixedOverheadCost || 0);
+      const normalScrap = Number(normalScrapAmount || 0);
+      const abnormalScrap = Number(abnormalScrapAmount || 0);
+
+      const totalProductionCost = totalMaterialCost + overhead + normalScrap + abnormalScrap;
+      const calculatedUnitCost = totalProductionCost / qProduced;
+
+      // Update finished product stock and unit cost
+      const finishedProd = await tx.product.findUnique({ where: { id: finishedProductId } });
+      if (!finishedProd) throw new Error('Бэлэн бүтээгдэхүүн олдсонгүй');
+
+      const newFinishedStock = finishedProd.stockQuantity + Math.round(qProduced);
+
+      await tx.product.update({
+        where: { id: finishedProductId },
+        data: {
+          stockQuantity: newFinishedStock,
+          costPrice: calculatedUnitCost
+        }
+      });
+
+      await tx.inventoryTransaction.create({
+        data: {
+          productId: finishedProductId,
+          type: 'INBOUND',
+          quantity: Math.round(qProduced),
+          previousStock: finishedProd.stockQuantity,
+          newStock: newFinishedStock,
+          userId: req.user!.id,
+          notes: `Үйлдвэрлэлээс хүлээн авсан бэлэн бүтээгдэхүүн #${batchNumber} (Өртөг: ₮${calculatedUnitCost.toLocaleString()}/нэгж)`
+        }
+      });
+
+      const batch = await tx.productionBatch.create({
+        data: {
+          batchNumber,
+          finishedProductId,
+          quantityProduced: qProduced,
+          fixedOverheadCost: overhead,
+          normalScrapAmount: normalScrap,
+          abnormalScrapAmount: abnormalScrap,
+          totalMaterialCost,
+          totalProductionCost,
+          calculatedUnitCost,
+          notes,
+          items: {
+            create: batchItemsData
+          }
+        },
+        include: {
+          finishedProduct: true,
+          items: { include: { ingredient: true } }
+        }
+      });
+
+      return batch;
+    });
+
+    res.status(201).json(result);
+  } catch (err: any) {
+    handleApiError(res, err, 400);
+  }
+});
+
+// ==========================================
+// Financial Summary & Analytics API Route
+// ==========================================
+
+app.get('/api/financial-summary', authenticate(), async (req, res) => {
+  try {
+    const products = await prisma.product.findMany({
+      where: { isActive: true },
+      include: { category: true }
+    });
+
+    const procurements = await prisma.procurement.findMany({
+      include: { items: true }
+    });
+
+    const productionBatches = await prisma.productionBatch.findMany({
+      include: { items: true }
+    });
+
+    const deliveredOrders = await prisma.order.findMany({
+      where: { status: 'DELIVERED' }
+    });
+
+    // 1. Inventory Valuation by Material Type
+    const inventoryValuation = {
+      RAW_MATERIAL: { count: 0, totalQuantity: 0, totalValue: 0 },
+      PACKAGING: { count: 0, totalQuantity: 0, totalValue: 0 },
+      AUXILIARY: { count: 0, totalQuantity: 0, totalValue: 0 },
+      SUPPLY: { count: 0, totalQuantity: 0, totalValue: 0 },
+      FINISHED_GOOD: { count: 0, totalQuantity: 0, totalValue: 0 },
+    };
+
+    products.forEach(p => {
+      const mType = (p.materialType || 'FINISHED_GOOD') as keyof typeof inventoryValuation;
+      const price = Number(p.costPrice) > 0 ? Number(p.costPrice) : Number(p.unitPrice);
+      if (inventoryValuation[mType]) {
+        inventoryValuation[mType].count += 1;
+        inventoryValuation[mType].totalQuantity += p.stockQuantity;
+        inventoryValuation[mType].totalValue += p.stockQuantity * price;
+      }
+    });
+
+    // 2. Per-Product Financial Analysis (Finished Goods)
+    const finishedGoodsAnalysis = products
+      .filter(p => p.materialType === 'FINISHED_GOOD' || !p.materialType)
+      .map(p => {
+        const cost = Number(p.costPrice) > 0 ? Number(p.costPrice) : Number(p.unitPrice) * 0.7; // default 70% if cost missing
+        const sellingPrice = Number(p.unitPrice);
+        const unitMarginProfit = sellingPrice - cost;
+        const marginPercent = sellingPrice > 0 ? (unitMarginProfit / sellingPrice) * 100 : 0;
+        const totalStockValue = p.stockQuantity * cost;
+        const totalStockRevenuePotential = p.stockQuantity * sellingPrice;
+        const totalStockMarginPotential = p.stockQuantity * unitMarginProfit;
+
+        return {
+          id: p.id,
+          sku: p.sku,
+          name: p.name,
+          unit: p.unit || 'ш',
+          stockQuantity: p.stockQuantity,
+          unitCostPrice: cost,
+          unitSellingPrice: sellingPrice,
+          unitMarginProfit,
+          marginPercent,
+          totalStockValue,
+          totalStockRevenuePotential,
+          totalStockMarginPotential
+        };
+      });
+
+    // 3. Consolidated Totals
+    const totalProcurementAmount = procurements.reduce((sum, pr) => sum + Number(pr.totalAmount), 0);
+    const totalMaterialsIssuedCost = productionBatches.reduce((sum, pb) => sum + Number(pb.totalMaterialCost), 0);
+    const totalFixedOverheadCost = productionBatches.reduce((sum, pb) => sum + Number(pb.fixedOverheadCost), 0);
+    const totalNormalScrapLoss = productionBatches.reduce((sum, pb) => sum + Number(pb.normalScrapAmount), 0);
+    const totalAbnormalScrapLoss = productionBatches.reduce((sum, pb) => sum + Number(pb.abnormalScrapAmount), 0);
+    const totalScrapLoss = totalNormalScrapLoss + totalAbnormalScrapLoss;
+    const totalProductionCost = productionBatches.reduce((sum, pb) => sum + Number(pb.totalProductionCost), 0);
+
+    const totalDeliveredRevenue = deliveredOrders.reduce((sum, o) => sum + Number(o.totalAmount), 0);
+    const totalDeliveredBaseCost = deliveredOrders.reduce((sum, o) => sum + Number(o.baseTotalAmount || 0), 0);
+    const totalDeliveredNetProfit = deliveredOrders.reduce((sum, o) => sum + Number(o.marginProfit || 0), 0);
+
+    res.json({
+      inventoryValuation,
+      finishedGoodsAnalysis,
+      summary: {
+        totalProcurementAmount,
+        totalMaterialsIssuedCost,
+        totalFixedOverheadCost,
+        totalNormalScrapLoss,
+        totalAbnormalScrapLoss,
+        totalScrapLoss,
+        totalProductionCost,
+        totalDeliveredRevenue,
+        totalDeliveredBaseCost,
+        totalDeliveredNetProfit
+      }
+    });
+  } catch (err) {
+    handleApiError(res, err);
   }
 });
 

@@ -296,6 +296,93 @@ export const api = {
     });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
+  },
+
+  // Manufacturing & Costing API
+  async getBOMs(): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/boms`, { headers: getHeaders() });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async saveBOM(data: { finishedProductId: string; name?: string; description?: string; items: { ingredientId: string; quantityPerUnit: number }[] }): Promise<any> {
+    const res = await fetch(`${API_BASE}/boms`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async deleteBOM(id: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/boms/${id}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async getProcurements(): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/procurements`, { headers: getHeaders() });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async createProcurement(data: { supplierName?: string; notes?: string; items: { productId: string; quantity: number; unitPrice: number }[] }): Promise<any> {
+    const res = await fetch(`${API_BASE}/procurements`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async getProductionBatches(): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/production-batches`, { headers: getHeaders() });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async createProductionBatch(data: {
+    finishedProductId: string;
+    quantityProduced: number;
+    fixedOverheadCost?: number;
+    normalScrapAmount?: number;
+    abnormalScrapAmount?: number;
+    notes?: string;
+    customIngredients?: { ingredientId: string; quantityUsed: number }[];
+  }): Promise<any> {
+    const res = await fetch(`${API_BASE}/production-batches`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async getFinancialSummary(): Promise<{
+    inventoryValuation: Record<string, { count: number; totalQuantity: number; totalValue: number }>;
+    finishedGoodsAnalysis: any[];
+    summary: {
+      totalProcurementAmount: number;
+      totalMaterialsIssuedCost: number;
+      totalFixedOverheadCost: number;
+      totalNormalScrapLoss: number;
+      totalAbnormalScrapLoss: number;
+      totalScrapLoss: number;
+      totalProductionCost: number;
+      totalDeliveredRevenue: number;
+      totalDeliveredBaseCost: number;
+      totalDeliveredNetProfit: number;
+    };
+  }> {
+    const res = await fetch(`${API_BASE}/financial-summary`, { headers: getHeaders() });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
   }
 };
 

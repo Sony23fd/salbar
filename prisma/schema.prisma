@@ -56,6 +56,14 @@ enum TaskStatus {
   DONE
 }
 
+enum MaterialType {
+  RAW_MATERIAL      // Түүхий эд материал
+  PACKAGING         // Сав баглаа боодол
+  AUXILIARY         // Туслах материал
+  SUPPLY            // Хангамжийн материал
+  FINISHED_GOOD     // Бэлэн бүтээгдэхүүн
+}
+
 // ------------------------------------------
 // User & Auth
 // ------------------------------------------
@@ -135,20 +143,30 @@ model Category {
 }
 
 model Product {
-  id            String      @id @default(cuid())
-  sku           String      @unique
+  id            String       @id @default(cuid())
+  sku           String       @unique
   name          String
   description   String?
-  unitPrice     Decimal     @db.Decimal(10, 2)
-  stockQuantity Int         @default(0)
-  minStockLevel Int         @default(5)
-  isActive      Boolean     @default(true)
+  unitPrice     Decimal      @db.Decimal(10, 2)
+  costPrice     Decimal      @db.Decimal(10, 2) @default(0)
+  unit          String       @default("ш")
+  materialType  MaterialType @default(FINISHED_GOOD)
+  stockQuantity Int          @default(0)
+  minStockLevel Int          @default(5)
+  isActive      Boolean      @default(true)
   
   categoryId    String?
   category      Category?              @relation(fields: [categoryId], references: [id])
   orderItems    OrderItem[]
   transactions  InventoryTransaction[]
   branchStock   BranchInventory[]
+
+  procurementItems      ProcurementItem[]
+  bomHeader             BOM[]                   @relation("FinishedProductBOM")
+  bomItems              BOMItem[]               @relation("IngredientProductBOM")
+  productionBatches     ProductionBatch[]
+  productionBatchItems  ProductionBatchItem[]
+
   createdAt     DateTime               @default(now())
   updatedAt     DateTime               @updatedAt
 
@@ -278,4 +296,99 @@ model TaskComment {
   updatedAt     DateTime  @updatedAt
 
   @@map("task_comments")
+}
+
+// ------------------------------------------
+// Bill of Materials (BOM / Жор)
+// ------------------------------------------
+
+model BOM {
+  id                String    @id @default(cuid())
+  finishedProductId String
+  finishedProduct   Product   @relation("FinishedProductBOM", fields: [finishedProductId], references: [id], onDelete: Cascade)
+  name              String
+  description       String?
+  items             BOMItem[]
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@map("boms")
+}
+
+model BOMItem {
+  id              String   @id @default(cuid())
+  bomId           String
+  bom             BOM      @relation(fields: [bomId], references: [id], onDelete: Cascade)
+  ingredientId    String
+  ingredient      Product  @relation("IngredientProductBOM", fields: [ingredientId], references: [id])
+  quantityPerUnit Float
+
+  @@map("bom_items")
+}
+
+// ------------------------------------------
+// Procurement (Татан авалт)
+// ------------------------------------------
+
+model Procurement {
+  id            String            @id @default(cuid())
+  procurementNo String            @unique
+  supplierName  String?
+  notes         String?
+  totalAmount   Decimal           @db.Decimal(10, 2)
+  items         ProcurementItem[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@map("procurements")
+}
+
+model ProcurementItem {
+  id            String      @id @default(cuid())
+  procurementId String
+  procurement   Procurement @relation(fields: [procurementId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product     @relation(fields: [productId], references: [id])
+  quantity      Float
+  unitPrice     Decimal     @db.Decimal(10, 2)
+  totalPrice    Decimal     @db.Decimal(10, 2)
+
+  @@map("procurement_items")
+}
+
+// ------------------------------------------
+// Production Batch & Costs (Үйлдвэрлэлийн Парц & Өртөг)
+// ------------------------------------------
+
+model ProductionBatch {
+  id                  String                @id @default(cuid())
+  batchNumber         String                @unique
+  finishedProductId   String
+  finishedProduct     Product               @relation(fields: [finishedProductId], references: [id])
+  quantityProduced    Float
+  fixedOverheadCost   Decimal               @db.Decimal(10, 2) @default(0)
+  normalScrapAmount   Decimal               @db.Decimal(10, 2) @default(0)
+  abnormalScrapAmount Decimal               @db.Decimal(10, 2) @default(0)
+  totalMaterialCost   Decimal               @db.Decimal(10, 2) @default(0)
+  totalProductionCost Decimal               @db.Decimal(10, 2) @default(0)
+  calculatedUnitCost  Decimal               @db.Decimal(10, 2) @default(0)
+  notes               String?
+  items               ProductionBatchItem[]
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  @@map("production_batches")
+}
+
+model ProductionBatchItem {
+  id                String          @id @default(cuid())
+  productionBatchId String
+  productionBatch   ProductionBatch @relation(fields: [productionBatchId], references: [id], onDelete: Cascade)
+  ingredientId      String
+  ingredient        Product         @relation(fields: [ingredientId], references: [id])
+  quantityUsed      Float
+  unitPrice         Decimal         @db.Decimal(10, 2)
+  totalPrice        Decimal         @db.Decimal(10, 2)
+
+  @@map("production_batch_items")
 }
