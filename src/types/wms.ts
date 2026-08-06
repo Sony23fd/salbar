@@ -80,6 +80,9 @@ export interface BOMItem {
   ingredientId: string;
   ingredient?: Product;
   quantityPerUnit: number;
+  grossQuantity?: number;
+  shrinkagePercent?: number;
+  itemCategory?: 'RAW_MATERIAL' | 'PACKAGING' | 'AUXILIARY';
 }
 
 export interface BOM {
@@ -88,9 +91,42 @@ export interface BOM {
   finishedProduct?: Product;
   name: string;
   description?: string;
+  laborNormCost?: number;
+  overheadAllocationCost?: number;
+  targetProfitMargin?: number;
+  vatRate?: number;
+  retailMarginRate?: number;
+  calculatedUnitCost?: number;
+  suggestedRetailPrice?: number;
   items: BOMItem[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface DeboningLog {
+  id: string;
+  date: string;
+  animalType: string;
+  grossWeight: number;
+  boneWasteWeight: number;
+  netMeatWeight: number;
+  yieldPercentage: number;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface LivestockLedger {
+  id: string;
+  date: string;
+  receivedCount: number;
+  slaughteredCount: number;
+  staffFoodCount: number;
+  deadCount: number;
+  soldCount: number;
+  returnedCount: number;
+  endingCount: number;
+  notes?: string;
+  createdAt: string;
 }
 
 export interface ProcurementItem {

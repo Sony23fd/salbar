@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Product, MaterialType, User } from '../types/wms';
 import { api } from '../lib/api';
+import { DeboningManager } from './DeboningManager';
+import { LivestockManager } from './LivestockManager';
 import {
   DollarSign,
   TrendingUp,
@@ -21,7 +23,9 @@ import {
   ChevronRight,
   Eye,
   X,
-  Calculator
+  Calculator,
+  Scissors,
+  Home
 } from 'lucide-react';
 
 interface ManufacturingFinancialsProps {
@@ -33,7 +37,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
   currentUser,
   onRefreshProducts
 }) => {
-  const [activeTab, setActiveTab] = useState<'BREAKDOWN' | 'EXECUTIVE_SUMMARY' | 'OPERATIONS' | 'VALUATION'>('BREAKDOWN');
+  const [activeTab, setActiveTab] = useState<'BREAKDOWN' | 'EXECUTIVE_SUMMARY' | 'OPERATIONS' | 'VALUATION' | 'DEBONING' | 'LIVESTOCK'>('BREAKDOWN');
   const [loading, setLoading] = useState(true);
   const [financialData, setFinancialData] = useState<any>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -360,7 +364,37 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
         >
           <Factory className="w-4 h-4" /> Жор, Татан авалт & Үйлдвэрлэл Түүх
         </button>
+
+        <button
+          onClick={() => setActiveTab('DEBONING')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            activeTab === 'DEBONING'
+              ? 'bg-white text-purple-600 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Scissors className="w-4 h-4" /> Анхан шатны Шулаа & Хорогдол
+        </button>
+
+        <button
+          onClick={() => setActiveTab('LIVESTOCK')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            activeTab === 'LIVESTOCK'
+              ? 'bg-white text-amber-600 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Home className="w-4 h-4" /> Малын Тооцоо & Бой
+        </button>
       </div>
+
+      {activeTab === 'DEBONING' && (
+        <DeboningManager currentUser={currentUser} />
+      )}
+
+      {activeTab === 'LIVESTOCK' && (
+        <LivestockManager currentUser={currentUser} />
+      )}
 
       {/* TAB 1: PER-PRODUCT INGREDIENT & COST BREAKDOWN */}
       {activeTab === 'BREAKDOWN' && (

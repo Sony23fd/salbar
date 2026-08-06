@@ -305,27 +305,75 @@ model TaskComment {
 // ------------------------------------------
 
 model BOM {
-  id                String    @id @default(cuid())
-  finishedProductId String
-  finishedProduct   Product   @relation("FinishedProductBOM", fields: [finishedProductId], references: [id], onDelete: Cascade)
-  name              String
-  description       String?
-  items             BOMItem[]
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id                      String    @id @default(cuid())
+  finishedProductId       String
+  finishedProduct         Product   @relation("FinishedProductBOM", fields: [finishedProductId], references: [id], onDelete: Cascade)
+  name                    String
+  description             String?
+  laborNormCost           Decimal   @db.Decimal(10, 2) @default(0)
+  overheadAllocationCost  Decimal   @db.Decimal(10, 2) @default(0)
+  targetProfitMargin      Float     @default(30)
+  vatRate                 Float     @default(10)
+  retailMarginRate        Float     @default(32)
+  calculatedUnitCost      Decimal   @db.Decimal(10, 2) @default(0)
+  suggestedRetailPrice    Decimal   @db.Decimal(10, 2) @default(0)
+  items                   BOMItem[]
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
   @@map("boms")
 }
 
 model BOMItem {
-  id              String   @id @default(cuid())
-  bomId           String
-  bom             BOM      @relation(fields: [bomId], references: [id], onDelete: Cascade)
-  ingredientId    String
-  ingredient      Product  @relation("IngredientProductBOM", fields: [ingredientId], references: [id])
-  quantityPerUnit Float
+  id                String   @id @default(cuid())
+  bomId             String
+  bom               BOM      @relation(fields: [bomId], references: [id], onDelete: Cascade)
+  ingredientId      String
+  ingredient        Product  @relation("IngredientProductBOM", fields: [ingredientId], references: [id])
+  quantityPerUnit   Float
+  grossQuantity     Float    @default(0)
+  shrinkagePercent  Float    @default(0)
+  itemCategory      String   @default("RAW_MATERIAL") // RAW_MATERIAL | PACKAGING | AUXILIARY
 
   @@map("bom_items")
+}
+
+// ------------------------------------------
+// Deboning & Primary Processing (Шулаа ба Анхан шатны боловсруулалт)
+// ------------------------------------------
+
+model DeboningLog {
+  id               String   @id @default(cuid())
+  date             DateTime @default(now())
+  animalType       String
+  grossWeight      Float
+  boneWasteWeight  Float
+  netMeatWeight    Float
+  yieldPercentage  Float
+  notes            String?
+  createdAt        DateTime @default(now())
+
+  @@map("deboning_logs")
+}
+
+// ------------------------------------------
+// Livestock Ledger (Малын тооцоо & Бой)
+// ------------------------------------------
+
+model LivestockLedger {
+  id               String   @id @default(cuid())
+  date             DateTime @default(now())
+  receivedCount    Int      @default(0)
+  slaughteredCount Int      @default(0)
+  staffFoodCount   Int      @default(0)
+  deadCount        Int      @default(0)
+  soldCount        Int      @default(0)
+  returnedCount    Int      @default(0)
+  endingCount      Int      @default(0)
+  notes            String?
+  createdAt        DateTime @default(now())
+
+  @@map("livestock_ledgers")
 }
 
 // ------------------------------------------

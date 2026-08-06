@@ -865,14 +865,38 @@ app.get('/api/boms', authenticate(), async (req, res) => {
   }
 });
 
-app.post('/api/boms', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async (req, res) => {
+app.post('/api/boms', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE']), async (req, res) => {
   try {
-    const { finishedProductId, name, description, items } = req.body; // items: [{ ingredientId, quantityPerUnit }]
+    const {
+      finishedProductId,
+      name,
+      description,
+      laborNormCost,
+      overheadAllocationCost,
+      targetProfitMargin,
+      vatRate,
+      retailMarginRate,
+      calculatedUnitCost,
+      suggestedRetailPrice,
+      items
+    } = req.body;
     
     // Check if BOM exists for finishedProduct
     const existing = await prisma.bOM.findFirst({
       where: { finishedProductId }
     });
+
+    const bomData = {
+      name: name || 'Стандарт Жор',
+      description,
+      laborNormCost: Number(laborNormCost || 0),
+      overheadAllocationCost: Number(overheadAllocationCost || 0),
+      targetProfitMargin: Number(targetProfitMargin || 30),
+      vatRate: Number(vatRate || 10),
+      retailMarginRate: Number(retailMarginRate || 32),
+      calculatedUnitCost: Number(calculatedUnitCost || 0),
+      suggestedRetailPrice: Number(suggestedRetailPrice || 0),
+    };
 
     let bom;
     if (existing) {
@@ -881,12 +905,14 @@ app.post('/api/boms', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async (req, r
       bom = await prisma.bOM.update({
         where: { id: existing.id },
         data: {
-          name: name || 'Стандарт Жор',
-          description,
+          ...bomData,
           items: {
             create: (items || []).map((item: any) => ({
               ingredientId: item.ingredientId,
-              quantityPerUnit: Number(item.quantityPerUnit || 0)
+              quantityPerUnit: Number(item.quantityPerUnit || 0),
+              grossQuantity: Number(item.grossQuantity || 0),
+              shrinkagePercent: Number(item.shrinkagePercent || 0),
+              itemCategory: item.itemCategory || 'RAW_MATERIAL'
             }))
           }
         },
@@ -899,12 +925,14 @@ app.post('/api/boms', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async (req, r
       bom = await prisma.bOM.create({
         data: {
           finishedProductId,
-          name: name || 'Стандарт Жор',
-          description,
+          ...bomData,
           items: {
             create: (items || []).map((item: any) => ({
               ingredientId: item.ingredientId,
-              quantityPerUnit: Number(item.quantityPerUnit || 0)
+              quantityPerUnit: Number(item.quantityPerUnit || 0),
+              grossQuantity: Number(item.grossQuantity || 0),
+              shrinkagePercent: Number(item.shrinkagePercent || 0),
+              itemCategory: item.itemCategory || 'RAW_MATERIAL'
             }))
           }
         },
@@ -914,6 +942,15 @@ app.post('/api/boms', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async (req, r
         }
       });
     }
+
+    // Also update costPrice of finishedProduct if calculatedUnitCost > 0
+    if (calculatedUnitCost && Number(calculatedUnitCost) > 0) {
+      await prisma.product.update({
+        where: { id: finishedProductId },
+        data: { costPrice: Number(calculatedUnitCost) }
+      });
+    }
+
     res.json(bom);
   } catch (err) {
     handleApiError(res, err, 400);
@@ -924,6 +961,72 @@ app.delete('/api/boms/:id', authenticate(['ADMIN']), async (req, res) => {
   try {
     await prisma.bOM.delete({ where: { id: req.params.id } });
     res.json({ success: true });
+  } catch (err) {
+    handleApiError(res, err, 400);
+  }
+});
+
+// Deboning Logs (Шулаа ба Анхан шатны боловсруулалт)
+app.get('/api/deboning-logs', authenticate(), async (req, res) => {
+  try {
+    const logs = await prisma.deboningLog.findMany({
+      orderBy: { date: 'desc' }
+    });
+    res.json(logs);
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
+
+app.post('/api/deboning-logs', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE']), async (req, res) => {
+  try {
+    const { date, animalType, grossWeight, boneWasteWeight, netMeatWeight, yieldPercentage, notes } = req.body;
+    const log = await prisma.deboningLog.create({
+      data: {
+        date: date ? new Date(date) : new Date(),
+        animalType,
+        grossWeight: Number(grossWeight),
+        boneWasteWeight: Number(boneWasteWeight),
+        netMeatWeight: Number(netMeatWeight),
+        yieldPercentage: Number(yieldPercentage),
+        notes
+      }
+    });
+    res.json(log);
+  } catch (err) {
+    handleApiError(res, err, 400);
+  }
+});
+
+// Livestock Ledgers (Малын тооцоо & Бой)
+app.get('/api/livestock-ledgers', authenticate(), async (req, res) => {
+  try {
+    const ledgers = await prisma.livestockLedger.findMany({
+      orderBy: { date: 'desc' }
+    });
+    res.json(ledgers);
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
+
+app.post('/api/livestock-ledgers', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE']), async (req, res) => {
+  try {
+    const { date, receivedCount, slaughteredCount, staffFoodCount, deadCount, soldCount, returnedCount, endingCount, notes } = req.body;
+    const ledger = await prisma.livestockLedger.create({
+      data: {
+        date: date ? new Date(date) : new Date(),
+        receivedCount: Number(receivedCount || 0),
+        slaughteredCount: Number(slaughteredCount || 0),
+        staffFoodCount: Number(staffFoodCount || 0),
+        deadCount: Number(deadCount || 0),
+        soldCount: Number(soldCount || 0),
+        returnedCount: Number(returnedCount || 0),
+        endingCount: Number(endingCount || 0),
+        notes
+      }
+    });
+    res.json(ledger);
   } catch (err) {
     handleApiError(res, err, 400);
   }

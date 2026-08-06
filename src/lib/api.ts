@@ -299,13 +299,13 @@ export const api = {
   },
 
   // Manufacturing & Costing API
-  async getBOMs(): Promise<any[]> {
+  async getBOMs(): Promise<BOM[]> {
     const res = await fetch(`${API_BASE}/boms`, { headers: getHeaders() });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },
 
-  async saveBOM(data: { finishedProductId: string; name?: string; description?: string; items: { ingredientId: string; quantityPerUnit: number }[] }): Promise<any> {
+  async saveBOM(data: Partial<BOM> & { finishedProductId: string; items: any[] }): Promise<BOM> {
     const res = await fetch(`${API_BASE}/boms`, {
       method: 'POST',
       headers: getHeaders(),
@@ -319,6 +319,38 @@ export const api = {
     const res = await fetch(`${API_BASE}/boms/${id}`, {
       method: 'DELETE',
       headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async getDeboningLogs(): Promise<DeboningLog[]> {
+    const res = await fetch(`${API_BASE}/deboning-logs`, { headers: getHeaders() });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async saveDeboningLog(data: Partial<DeboningLog>): Promise<DeboningLog> {
+    const res = await fetch(`${API_BASE}/deboning-logs`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async getLivestockLedgers(): Promise<LivestockLedger[]> {
+    const res = await fetch(`${API_BASE}/livestock-ledgers`, { headers: getHeaders() });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async saveLivestockLedger(data: Partial<LivestockLedger>): Promise<LivestockLedger> {
+    const res = await fetch(`${API_BASE}/livestock-ledgers`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
