@@ -1298,6 +1298,13 @@ app.get('/api/financial-summary', authenticate(), async (req, res) => {
       include: { category: true }
     });
 
+    const boms = await prisma.bOM.findMany({
+      include: {
+        items: { include: { ingredient: true } }
+      }
+    });
+    const bomMap = new Map(boms.map(b => [b.finishedProductId, b]));
+
     const procurements = await prisma.procurement.findMany({
       include: { items: true }
     });
@@ -1333,7 +1340,41 @@ app.get('/api/financial-summary', authenticate(), async (req, res) => {
     const finishedGoodsAnalysis = products
       .filter(p => p.materialType === 'FINISHED_GOOD' || !p.materialType)
       .map(p => {
-        const cost = Number(p.costPrice) > 0 ? Number(p.costPrice) : Number(p.unitPrice) * 0.7; // default 70% if cost missing
+        const bom = bomMap.get(p.id);
+
+        let rawMaterialCost = 0;
+        let packagingCost = 0;
+        let auxiliaryCost = 0;
+        const bomDetails: any[] = [];
+
+        if (bom && bom.items) {
+          bom.items.forEach(bItem => {
+            const ing = bItem.ingredient;
+            if (ing) {
+              const ingPrice = Number(ing.costPrice) > 0 ? Number(ing.costPrice) : Number(ing.unitPrice);
+              const lineCost = bItem.quantityPerUnit * ingPrice;
+              const mType = ing.materialType || 'RAW_MATERIAL';
+
+              if (mType === 'RAW_MATERIAL') rawMaterialCost += lineCost;
+              else if (mType === 'PACKAGING') packagingCost += lineCost;
+              else auxiliaryCost += lineCost;
+
+              bomDetails.push({
+                ingredientId: ing.id,
+                name: ing.name,
+                sku: ing.sku,
+                unit: ing.unit || 'ш',
+                materialType: mType,
+                quantityPerUnit: bItem.quantityPerUnit,
+                unitCost: ingPrice,
+                lineCost
+              });
+            }
+          });
+        }
+
+        const bomMaterialTotal = rawMaterialCost + packagingCost + auxiliaryCost;
+        const cost = Number(p.costPrice) > 0 ? Number(p.costPrice) : (bomMaterialTotal > 0 ? bomMaterialTotal : Number(p.unitPrice) * 0.7);
         const sellingPrice = Number(p.unitPrice);
         const unitMarginProfit = sellingPrice - cost;
         const marginPercent = sellingPrice > 0 ? (unitMarginProfit / sellingPrice) * 100 : 0;
@@ -1353,7 +1394,12 @@ app.get('/api/financial-summary', authenticate(), async (req, res) => {
           marginPercent,
           totalStockValue,
           totalStockRevenuePotential,
-          totalStockMarginPotential
+          totalStockMarginPotential,
+          rawMaterialCost,
+          packagingCost,
+          auxiliaryCost,
+          bomMaterialTotal,
+          bomDetails
         };
       });
 

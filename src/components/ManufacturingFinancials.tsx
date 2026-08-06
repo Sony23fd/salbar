@@ -17,7 +17,11 @@ import {
   PieChart,
   Truck,
   RotateCcw,
-  Info
+  Info,
+  ChevronRight,
+  Eye,
+  X,
+  Calculator
 } from 'lucide-react';
 
 interface ManufacturingFinancialsProps {
@@ -37,9 +41,9 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
   const [procurements, setProcurements] = useState<any[]>([]);
   const [productionBatches, setProductionBatches] = useState<any[]>([]);
 
-  // Search & Filter
+  // Search & Selected Product for Detail Breakdown
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedMaterialFilter, setSelectedMaterialFilter] = useState<string>('ALL');
+  const [selectedProductDetail, setSelectedProductDetail] = useState<any>(null);
 
   // Modals state for Operations
   const [showBomModal, setShowBomModal] = useState(false);
@@ -117,6 +121,34 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
     });
   }, [financialData, searchQuery]);
 
+  // Live BOM Cost Calculation Preview
+  const liveBomCostPreview = useMemo(() => {
+    let rawCost = 0;
+    let pkgCost = 0;
+    let auxCost = 0;
+
+    bomItems.forEach((bItem) => {
+      const prod = products.find(p => p.id === bItem.ingredientId);
+      if (prod) {
+        const price = Number(prod.costPrice) > 0 ? Number(prod.costPrice) : Number(prod.unitPrice);
+        const lineTotal = bItem.quantityPerUnit * price;
+        const mType = prod.materialType || 'RAW_MATERIAL';
+
+        if (mType === 'RAW_MATERIAL') rawCost += lineTotal;
+        else if (mType === 'PACKAGING') pkgCost += lineTotal;
+        else auxCost += lineTotal;
+      }
+    });
+
+    const targetProduct = products.find(p => p.id === selectedFinishedProduct);
+    const sellingPrice = targetProduct ? Number(targetProduct.unitPrice) : 0;
+    const totalEstCost = rawCost + pkgCost + auxCost;
+    const estProfit = sellingPrice - totalEstCost;
+    const estMargin = sellingPrice > 0 ? (estProfit / sellingPrice) * 100 : 0;
+
+    return { rawCost, pkgCost, auxCost, totalEstCost, sellingPrice, estProfit, estMargin };
+  }, [bomItems, products, selectedFinishedProduct]);
+
   // Handle BOM Submit
   const handleSaveBOM = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,7 +161,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
         finishedProductId: selectedFinishedProduct,
         items: bomItems
       });
-      alert('Үйлдвэрлэлийн Жор (BOM) амжилттай хадгалагдлаа.');
+      alert('Бүтээгдэхүүний Орц (BOM) амжилттай хадгалагдаж, нэгж өртөг шинэчлэгдлээ.');
       setShowBomModal(false);
       loadAllData();
     } catch (err: any) {
@@ -146,11 +178,11 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
     }
     try {
       await api.createProcurement({
-        supplierName: procSupplier,
+        supplierName: procSupplier || 'Нийт ТЭМ & Сав баглаа татан авалт',
         notes: procNotes,
         items: procItems
       });
-      alert('Татан авалт амжилттай бүртгэгдэж, агуулахын үлдэгдэл нэмэгдлээ.');
+      alert('Түүхий эд, Сав баглаа материалын татан авалт амжилттай бүртгэгдэж, агуулахын үлдэгдэл болон нэгж өртөг шинэчлэгдлээ.');
       setShowProcurementModal(false);
       setProcSupplier('');
       setProcNotes('');
@@ -178,7 +210,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
         abnormalScrapAmount: prodAbnormalScrap,
         notes: prodNotes
       });
-      alert('Үйлдвэрлэл амжилттай бүртгэгдэж, бодит өртөг бодогдон агуулахын үлдэгдэл нэмэгдлээ.');
+      alert('Үйлдвэрлэлийн бүртгэл амжилттай хийгдэж, орцын ТЭМ/Сав баглаа хасагдан, нэгж бодит өртөг бодогдон агуулахад хүлээн авагдлаа.');
       setShowProductionModal(false);
       setProdFinishedProductId('');
       setProdQuantity(100);
@@ -211,10 +243,10 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
         <div>
           <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
             <FileSpreadsheet className="w-6 h-6 text-blue-600" />
-            Үйлдвэрлэлийн Өртөг & Санхүүгийн Тооцоо
+            Барааны Орц & Үйлдвэрлэлийн Өртөг, Санхүүгийн Тооцоо
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Татан авалт, ТЭМ, Сав баглаа, Тогтмол зардал & Хорогдол, Бэлэн бүтээгдэхүүний өртөг ба ашгийн тооцоо
+            Нэгж бүтээгдэхүүний ТЭМ, Сав баглаа, Туслах материалын орцын задрал болон бодит үйлдвэрлэлийн өртөг, маржин ашгийн тайлан
           </p>
         </div>
 
@@ -224,19 +256,19 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
               onClick={() => setShowProcurementModal(true)}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-xs"
             >
-              <Plus className="w-4 h-4" /> Татан авалт оруулах
+              <Plus className="w-4 h-4" /> ТЭМ & Сав баглаа татан авах
             </button>
             <button
               onClick={() => setShowBomModal(true)}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white transition-colors shadow-xs"
             >
-              <Settings className="w-4 h-4" /> Жор (BOM) тохируулах
+              <Settings className="w-4 h-4" /> Орц (BOM) тохируулах
             </button>
             <button
               onClick={() => setShowProductionModal(true)}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-xs"
             >
-              <Factory className="w-4 h-4" /> Үйлдвэрлэл ажиллуулах
+              <Factory className="w-4 h-4" /> Үйлдвэрлэл бүртгэх
             </button>
           </div>
         )}
@@ -252,7 +284,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          <Layers className="w-4 h-4" /> Бараа тус бүрийн санхүүгийн тооцоо
+          <Layers className="w-4 h-4" /> Барааны Орц & Өртөг Тооцоолол
         </button>
 
         <button
@@ -263,7 +295,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          <PieChart className="w-4 h-4" /> Нийт санхүүгийн нэгдсэн тооцоо
+          <PieChart className="w-4 h-4" /> Нийт Санхүүгийн Нэгдсэн Тайлан
         </button>
 
         <button
@@ -274,7 +306,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          <Boxes className="w-4 h-4" /> Материал & Үлдэгдлийн санхүүгийн тооцоо
+          <Boxes className="w-4 h-4" /> Материал & Үлдэгдлийн Үнэлгээ
         </button>
 
         <button
@@ -285,21 +317,21 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          <Factory className="w-4 h-4" /> Жор, Татан авалт & Үйлдвэрлэл түүх
+          <Factory className="w-4 h-4" /> Жор, Татан авалт & Үйлдвэрлэл Түүх
         </button>
       </div>
 
-      {/* TAB 1: PER-PRODUCT FINANCIAL BREAKDOWN */}
+      {/* TAB 1: PER-PRODUCT INGREDIENT & COST BREAKDOWN */}
       {activeTab === 'BREAKDOWN' && (
         <div className="space-y-6 animate-in fade-in duration-200">
-          {/* Executive KPI Cards for Finished Goods */}
+          {/* Executive KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
               <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
                 <Package className="w-6 h-6" />
               </div>
               <div>
-                <div className="text-[11px] font-bold text-slate-400 uppercase">Бэлэн бүтээгдэхүүн</div>
+                <div className="text-[11px] font-bold text-slate-400 uppercase">Үйлдвэрлэх Бэлэн Бараа</div>
                 <div className="text-xl font-black text-slate-900">{financialData?.finishedGoodsAnalysis?.length || 0} төрөл</div>
               </div>
             </div>
@@ -309,7 +341,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
                 <TrendingUp className="w-6 h-6" />
               </div>
               <div>
-                <div className="text-[11px] font-bold text-slate-400 uppercase">Боломжит нийт орлого</div>
+                <div className="text-[11px] font-bold text-slate-400 uppercase">Боломжит Борлуулалтын Орлого</div>
                 <div className="text-xl font-black text-slate-900 font-mono">
                   ₮{(financialData?.finishedGoodsAnalysis || []).reduce((s: number, g: any) => s + g.totalStockRevenuePotential, 0).toLocaleString()}
                 </div>
@@ -321,7 +353,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
                 <DollarSign className="w-6 h-6" />
               </div>
               <div>
-                <div className="text-[11px] font-bold text-slate-400 uppercase">Боломжит нийт маржин ашиг</div>
+                <div className="text-[11px] font-bold text-slate-400 uppercase">Боломжит Цэвэр Маржин Ашиг</div>
                 <div className="text-xl font-black text-purple-700 font-mono">
                   ₮{(financialData?.finishedGoodsAnalysis || []).reduce((s: number, g: any) => s + g.totalStockMarginPotential, 0).toLocaleString()}
                 </div>
@@ -333,7 +365,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
                 <PieChart className="w-6 h-6" />
               </div>
               <div>
-                <div className="text-[11px] font-bold text-slate-400 uppercase">Үлдэгдлийн нийт өртөг</div>
+                <div className="text-[11px] font-bold text-slate-400 uppercase">Үлдэгдэл Бэлэн Барааны Өртөг</div>
                 <div className="text-xl font-black text-amber-700 font-mono">
                   ₮{(financialData?.finishedGoodsAnalysis || []).reduce((s: number, g: any) => s + g.totalStockValue, 0).toLocaleString()}
                 </div>
@@ -346,46 +378,57 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Барааны нэр эсвэл SKU-аар хайх..."
+              placeholder="Бүтээгдэхүүн хайх..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none shadow-xs"
             />
           </div>
 
-          {/* Detailed Table */}
+          {/* Detailed Table for Product Production Cost & Ingredients */}
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
             <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-800">Бүтээгдэхүүн тус бүрийн Өртөг, Борлуулах Үнэ & Маржин Ашиг</h3>
+              <div>
+                <h3 className="text-sm font-bold text-slate-800">Бүтээгдэхүүн тус бүрийн Өртгийн Задрал (ТЭМ, Сав баглаа) & Ашиг</h3>
+                <p className="text-xs text-slate-500">Бараа бүрийн мөрөн дээр дарж орцын дэлгэрэнгүй задралыг харна уу.</p>
+              </div>
               <span className="text-xs text-slate-500">Нийт: <strong>{filteredGoods.length}</strong></span>
             </div>
+
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="bg-slate-100 border-b border-slate-200 text-slate-600">
                   <tr>
-                    <th className="px-4 py-3 font-bold text-[11px] uppercase">Бараа / SKU</th>
-                    <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Үлдэгдэл тоо</th>
-                    <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Нэгж өртөг</th>
-                    <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Борлуулах нэгж үнэ</th>
-                    <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Нэгж маржин ашиг</th>
+                    <th className="px-4 py-3 font-bold text-[11px] uppercase">Бүтээгдэхүүн / SKU</th>
+                    <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">ТЭМ Орцын Дүн</th>
+                    <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Сав баглаа Дүн</th>
+                    <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Нэгж Бодит Өртөг</th>
+                    <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Борлуулах Үнэ</th>
+                    <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Нэгж Маржин Ашиг</th>
                     <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Ашгийн %</th>
-                    <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Үлдэгдлийн нийт өртөг</th>
-                    <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Боломжит орлого</th>
+                    <th className="px-4 py-3 font-bold text-[11px] uppercase text-center">Орцын задрал</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredGoods.map((item: any) => {
                     const isProfit = item.unitMarginProfit >= 0;
                     return (
-                      <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                      <tr
+                        key={item.id}
+                        onClick={() => setSelectedProductDetail(item)}
+                        className="hover:bg-blue-50/50 cursor-pointer transition-colors"
+                      >
                         <td className="px-4 py-3">
                           <div className="font-bold text-slate-900">{item.name}</div>
-                          <div className="text-xs text-slate-500 font-mono">{item.sku}</div>
+                          <div className="text-xs text-slate-500 font-mono">{item.sku} • Үлдэгдэл: {item.stockQuantity} {item.unit}</div>
                         </td>
-                        <td className="px-4 py-3 text-right font-bold text-slate-800">
-                          {item.stockQuantity} {item.unit}
+                        <td className="px-4 py-3 text-right font-mono font-medium text-amber-800">
+                          ₮{(item.rawMaterialCost || 0).toLocaleString()}
                         </td>
-                        <td className="px-4 py-3 text-right font-mono font-semibold text-amber-800">
+                        <td className="px-4 py-3 text-right font-mono font-medium text-purple-800">
+                          ₮{(item.packagingCost || 0).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono font-bold text-slate-900">
                           ₮{item.unitCostPrice.toLocaleString()}
                         </td>
                         <td className="px-4 py-3 text-right font-mono font-semibold text-blue-700">
@@ -401,11 +444,16 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
                             {item.marginPercent.toFixed(1)}%
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-right font-mono font-bold text-slate-800">
-                          ₮{item.totalStockValue.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono font-bold text-emerald-700">
-                          ₮{item.totalStockRevenuePotential.toLocaleString()}
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedProductDetail(item);
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-700 transition-colors"
+                          >
+                            <Eye className="w-3.5 h-3.5" /> Задрал харах
+                          </button>
                         </td>
                       </tr>
                     );
@@ -432,7 +480,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
             {/* Section 1: Procurement */}
             <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
               <div className="bg-yellow-400/90 text-slate-900 font-black text-xs uppercase px-4 py-3 border-b border-yellow-500/30 flex items-center gap-2">
-                <Truck className="w-4 h-4" /> 1. Түүхий эд & Татан авалт
+                <Truck className="w-4 h-4" /> 1. Түүхий эд & Сав баглаа татан авалт
               </div>
               <div className="p-4 space-y-3">
                 <div className="flex justify-between items-center text-xs border-b border-slate-100 pb-2">
@@ -449,15 +497,15 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
             {/* Section 2: Materials Issued */}
             <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
               <div className="bg-yellow-400/90 text-slate-900 font-black text-xs uppercase px-4 py-3 border-b border-yellow-500/30 flex items-center gap-2">
-                <Boxes className="w-4 h-4" /> 2. Үйлдвэрт тавьж олгосон
+                <Boxes className="w-4 h-4" /> 2. Үйлдвэрт олгосон ТЭМ & Материал
               </div>
               <div className="p-4 space-y-3">
                 <div className="flex justify-between items-center text-xs border-b border-slate-100 pb-2">
-                  <span className="text-slate-500 font-semibold">ТЭМ ба Материалын зардал:</span>
+                  <span className="text-slate-500 font-semibold">ТЭМ ба Сав баглааны зардал:</span>
                   <span className="font-mono font-bold text-amber-800">₮{(summary?.totalMaterialsIssuedCost || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500 font-semibold">Ажиллуулсан парц (Batches):</span>
+                  <span className="text-slate-500 font-semibold">Үйлдвэрлэлийн парц (Batches):</span>
                   <span className="font-bold text-blue-600">{productionBatches.length} удаа</span>
                 </div>
               </div>
@@ -505,7 +553,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
           {/* Production Financial Formula Summary Card */}
           <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-lg border border-slate-800 space-y-4">
             <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
-              <Factory className="w-5 h-5 text-blue-400" /> Нэгдсэн Үйлдвэрлэлийн Өртөг Ба Ашгийн Тооцооллын Тоомьёо
+              <Factory className="w-5 h-5 text-blue-400" /> Нэгдсэн Үйлдвэрлэлийн Өртөг Ба Ашгийн Тооцооллын Томьёо
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
               <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700/50 space-y-1">
@@ -536,7 +584,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
         </div>
       )}
 
-      {/* TAB 3: INVENTORY VALUATION BY MATERIAL CATEGORY (Excel line 9 requirement) */}
+      {/* TAB 3: INVENTORY VALUATION BY MATERIAL CATEGORY */}
       {activeTab === 'VALUATION' && (
         <div className="space-y-6 animate-in fade-in duration-200">
           <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between">
@@ -622,7 +670,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
         </div>
       )}
 
-      {/* TAB 4: OPERATIONS (BOM, PROCUREMENTS & BATCH HISTORY) */}
+      {/* TAB 4: OPERATIONS */}
       {activeTab === 'OPERATIONS' && (
         <div className="space-y-6 animate-in fade-in duration-200">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -649,7 +697,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
             <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-xs">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <Truck className="w-4 h-4 text-emerald-600" /> Сүүлийн Татан авалтууд
+                  <Truck className="w-4 h-4 text-emerald-600" /> ТЭМ & Сав баглаа татан авалт
                 </h3>
                 <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">{procurements.length}</span>
               </div>
@@ -660,7 +708,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
                       <span className="text-slate-900">{p.procurementNo}</span>
                       <span className="font-mono text-emerald-700">₮{Number(p.totalAmount).toLocaleString()}</span>
                     </div>
-                    <div className="text-[11px] text-slate-500">{p.supplierName || 'Нийлүүлэгч тодорхойгүй'} • {new Date(p.createdAt).toLocaleDateString('mn-MN')}</div>
+                    <div className="text-[11px] text-slate-500">{p.supplierName || 'Нийт татан авалт'} • {new Date(p.createdAt).toLocaleDateString('mn-MN')}</div>
                   </div>
                 ))}
                 {procurements.length === 0 && <div className="text-xs text-slate-500 py-4 text-center">Татан авалт бүртгэгдээгүй байна.</div>}
@@ -696,22 +744,125 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
         </div>
       )}
 
-      {/* MODAL 1: BOM SETTINGS MODAL */}
+      {/* PRODUCT COST BREAKDOWN DETAIL MODAL */}
+      {selectedProductDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl shadow-2xl p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between border-b border-slate-200 pb-3">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                  Нэгж Бүтээгдэхүүний Өртгийн Карт
+                </span>
+                <h3 className="text-lg font-bold text-slate-900 mt-1">{selectedProductDetail.name}</h3>
+                <p className="text-xs text-slate-500 font-mono">SKU: {selectedProductDetail.sku} • Агуулахын үлдэгдэл: {selectedProductDetail.stockQuantity} {selectedProductDetail.unit}</p>
+              </div>
+              <button
+                onClick={() => setSelectedProductDetail(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Financial Summary Cards inside Detail Modal */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div className="bg-amber-50/70 p-3 rounded-xl border border-amber-200/60">
+                <div className="text-amber-800 font-bold text-[10px] uppercase">ТЭМ Орцын өртөг</div>
+                <div className="text-base font-black font-mono text-amber-900">₮{(selectedProductDetail.rawMaterialCost || 0).toLocaleString()}</div>
+              </div>
+              <div className="bg-purple-50/70 p-3 rounded-xl border border-purple-200/60">
+                <div className="text-purple-800 font-bold text-[10px] uppercase">Сав баглааны өртөг</div>
+                <div className="text-base font-black font-mono text-purple-900">₮{(selectedProductDetail.packagingCost || 0).toLocaleString()}</div>
+              </div>
+              <div className="bg-slate-100 p-3 rounded-xl border border-slate-200">
+                <div className="text-slate-600 font-bold text-[10px] uppercase">Нэгж Бодит Өртөг</div>
+                <div className="text-base font-black font-mono text-slate-900">₮{(selectedProductDetail.unitCostPrice || 0).toLocaleString()}</div>
+              </div>
+              <div className="bg-emerald-50/70 p-3 rounded-xl border border-emerald-200/60">
+                <div className="text-emerald-800 font-bold text-[10px] uppercase">Нэгж Маржин Ашиг</div>
+                <div className="text-base font-black font-mono text-emerald-900">₮{(selectedProductDetail.unitMarginProfit || 0).toLocaleString()}</div>
+              </div>
+            </div>
+
+            {/* Ingredient List Table */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <Calculator className="w-4 h-4 text-blue-600" /> Орцын Нарийвчилсан Задрал (1 Нэгжид)
+                </h4>
+                <button
+                  onClick={() => {
+                    setSelectedFinishedProduct(selectedProductDetail.id);
+                    const existing = boms.find(b => b.finishedProductId === selectedProductDetail.id);
+                    if (existing && existing.items) {
+                      setBomItems(existing.items.map((i: any) => ({ ingredientId: i.ingredientId, quantityPerUnit: i.quantityPerUnit })));
+                    } else {
+                      setBomItems([]);
+                    }
+                    setSelectedProductDetail(null);
+                    setShowBomModal(true);
+                  }}
+                  className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1"
+                >
+                  <Settings className="w-3.5 h-3.5" /> Жор (BOM) Засах
+                </button>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-100 text-slate-600 border-b border-slate-200 font-bold">
+                    <tr>
+                      <th className="px-3 py-2">Материал / Орц</th>
+                      <th className="px-3 py-2">Төрөл</th>
+                      <th className="px-3 py-2 text-right">1 нэгжид олон тоо</th>
+                      <th className="px-3 py-2 text-right">Материалын нэгж өртөг</th>
+                      <th className="px-3 py-2 text-right">Орноос хамаарах өртөг</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200/60">
+                    {(selectedProductDetail.bomDetails || []).map((b: any, idx: number) => (
+                      <tr key={idx} className="hover:bg-white transition-colors">
+                        <td className="px-3 py-2 font-bold text-slate-900">{b.name}</td>
+                        <td className="px-3 py-2">
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${materialTypeBadges[b.materialType as MaterialType] || 'bg-slate-100'}`}>
+                            {materialTypeNames[b.materialType as MaterialType] || b.materialType}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono font-semibold">{b.quantityPerUnit} {b.unit}</td>
+                        <td className="px-3 py-2 text-right font-mono">₮{b.unitCost.toLocaleString()}</td>
+                        <td className="px-3 py-2 text-right font-mono font-bold text-blue-700">₮{b.lineCost.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                    {(!selectedProductDetail.bomDetails || selectedProductDetail.bomDetails.length === 0) && (
+                      <tr>
+                        <td colSpan={5} className="text-center py-6 text-slate-500">
+                          Энэ бараанд Орц (BOM) Жор тохируулаагүй байна. "Жор Засах" товчоор тохируулна уу.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 1: BOM SETTINGS & REALTIME COST CALCULATOR */}
       {showBomModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
           <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-xl shadow-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Settings className="w-5 h-5 text-blue-600" /> Үйлдвэрлэлийн Жор (BOM) Тохируулах
+              <Settings className="w-5 h-5 text-blue-600" /> Бүтээгдэхүүний Орц (BOM) & Өртгийн Калькулятор
             </h3>
-            
+
             <form onSubmit={handleSaveBOM} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Бэлэн бүтээгдэхүүн сонгох *</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Үйлдвэрлэх Бэлэн Бүтээгдэхүүн Сонгох *</label>
                 <select
                   value={selectedFinishedProduct}
                   onChange={(e) => {
                     setSelectedFinishedProduct(e.target.value);
-                    // auto load existing BOM items if present
                     const existing = boms.find(b => b.finishedProductId === e.target.value);
                     if (existing && existing.items) {
                       setBomItems(existing.items.map((i: any) => ({ ingredientId: i.ingredientId, quantityPerUnit: i.quantityPerUnit })));
@@ -719,7 +870,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
                       setBomItems([]);
                     }
                   }}
-                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900"
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900"
                   required
                 >
                   <option value="">-- Сонгох --</option>
@@ -729,9 +880,38 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
                 </select>
               </div>
 
+              {/* Real-time Live Cost Preview Card */}
+              {selectedFinishedProduct && (
+                <div className="bg-blue-50/80 border border-blue-200 p-4 rounded-xl space-y-2">
+                  <div className="text-[11px] font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Calculator className="w-4 h-4 text-blue-600" /> Тооцоологдсон Өртгийн Урьдчилсан Тооцоо
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">ТЭМ:</span>
+                      <strong className="font-mono text-amber-800">₮{liveBomCostPreview.rawCost.toLocaleString()}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">Сав баглаа:</span>
+                      <strong className="font-mono text-purple-800">₮{liveBomCostPreview.pkgCost.toLocaleString()}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">Нэгж Өртөг:</span>
+                      <strong className="font-mono text-slate-900">₮{liveBomCostPreview.totalEstCost.toLocaleString()}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">Ашгийн Маржин %:</span>
+                      <strong className={`font-mono ${liveBomCostPreview.estMargin >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                        {liveBomCostPreview.estMargin.toFixed(1)}%
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-bold text-slate-700">Орох түүхий эд, сав баглаа боодол (1 нэгжид)</label>
+                  <label className="text-xs font-bold text-slate-700">Орох Түүхий эд, Сав баглаа, Туслах материал (1 нэгжид)</label>
                   <button
                     type="button"
                     onClick={() => setBomItems([...bomItems, { ingredientId: '', quantityPerUnit: 1 }])}
@@ -801,7 +981,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
                   type="submit"
                   className="px-5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white"
                 >
-                  Жор Хадгалах
+                  Орц (BOM) Хадгалах
                 </button>
               </div>
             </form>
@@ -809,47 +989,35 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
         </div>
       )}
 
-      {/* MODAL 2: PROCUREMENT ENTRY MODAL */}
+      {/* MODAL 2: MATERIAL PROCUREMENT (RECEIPT) MODAL */}
       {showProcurementModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
           <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl shadow-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Truck className="w-5 h-5 text-emerald-600" /> Татан авалт Бүртгэх
+              <Truck className="w-5 h-5 text-emerald-600" /> Түүхий эд & Сав баглаа материал хүлээн авах (Татан авалт)
             </h3>
 
             <form onSubmit={handleSaveProcurement} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Нийлүүлэгчийн нэр</label>
-                  <input
-                    type="text"
-                    placeholder="Жишээ нь: Завхан Түүхий Эд ХХК"
-                    value={procSupplier}
-                    onChange={(e) => setProcSupplier(e.target.value)}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Тэмдэглэл</label>
-                  <input
-                    type="text"
-                    placeholder="Жишээ нь: 1-р улирлын материал"
-                    value={procNotes}
-                    onChange={(e) => setProcNotes(e.target.value)}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Татан авалтын тэмдэглэл / Баримт</label>
+                <input
+                  type="text"
+                  placeholder="Жишээ нь: 1-р улирлын сүү, хайрцаг татан авалт"
+                  value={procNotes}
+                  onChange={(e) => setProcNotes(e.target.value)}
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs"
+                />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-bold text-slate-700">Татан авах ТЭМ / Сав баглаа боодол / Материалууд</label>
+                  <label className="text-xs font-bold text-slate-700">Авсан ТЭМ / Сав баглаа / Туслах материалууд</label>
                   <button
                     type="button"
                     onClick={() => setProcItems([...procItems, { productId: '', quantity: 100, unitPrice: 1000 }])}
                     className="text-xs text-emerald-600 font-bold hover:underline flex items-center gap-1"
                   >
-                    <Plus className="w-3.5 h-3.5" /> Бараа нэмэх
+                    <Plus className="w-3.5 h-3.5" /> Материал нэмэх
                   </button>
                 </div>
 
@@ -863,12 +1031,12 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
                           newItems[idx].productId = e.target.value;
                           setProcItems(newItems);
                         }}
-                        className="flex-1 bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs"
+                        className="flex-1 bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium"
                         required
                       >
                         <option value="">-- Материал сонгох --</option>
-                        {products.map(p => (
-                          <option key={p.id} value={p.id}>[{materialTypeNames[p.materialType || 'RAW_MATERIAL']}] {p.name}</option>
+                        {products.filter(p => p.materialType !== 'FINISHED_GOOD').map(p => (
+                          <option key={p.id} value={p.id}>[{materialTypeNames[p.materialType || 'RAW_MATERIAL']}] {p.name} ({p.unit || 'ш'})</option>
                         ))}
                       </select>
                       <input
@@ -885,14 +1053,14 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
                       />
                       <input
                         type="number"
-                        placeholder="Нэгж үнэ (₮)"
+                        placeholder="Нэгж авсан үнэ (₮)"
                         value={item.unitPrice}
                         onChange={(e) => {
                           const newItems = [...procItems];
                           newItems[idx].unitPrice = parseFloat(e.target.value) || 0;
                           setProcItems(newItems);
                         }}
-                        className="w-28 bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono"
+                        className="w-32 bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono"
                         required
                       />
                       <button
@@ -906,7 +1074,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
                   ))}
                   {procItems.length === 0 && (
                     <div className="text-xs text-slate-400 py-3 text-center border border-dashed rounded-xl">
-                      Татан авах бараа сонгоогүй байна.
+                      Материал сонгоогүй байна.
                     </div>
                   )}
                 </div>
@@ -924,7 +1092,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
                   type="submit"
                   className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
-                  Татан авалт Хадгалах
+                  Материал Хүлээн Авах
                 </button>
               </div>
             </form>
@@ -937,16 +1105,16 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
           <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-xl shadow-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Factory className="w-5 h-5 text-blue-600" /> Үйлдвэрлэлийн Парц Ажиллуулах & Өртөг Тооцох
+              <Factory className="w-5 h-5 text-blue-600" /> Үйлдвэрлэлийн Парц Бүртгэх & Өртөг Бодох
             </h3>
 
             <form onSubmit={handleSaveProductionBatch} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Үйлдвэрлэх Бэлэн бүтээгдэхүүн *</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Үйлдвэрлэх Бэлэн Бүтээгдэхүүн *</label>
                 <select
                   value={prodFinishedProductId}
                   onChange={(e) => setProdFinishedProductId(e.target.value)}
-                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold"
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900"
                   required
                 >
                   <option value="">-- Бэлэн бүтээгдэхүүн сонгох --</option>
@@ -1025,7 +1193,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
                   type="submit"
                   className="px-5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white"
                 >
-                  Үйлдвэрлэл Эхлүүлж Өртөг Бодох
+                  Үйлдвэрлэл Бүртгэж Өртөг Бодох
                 </button>
               </div>
             </form>
