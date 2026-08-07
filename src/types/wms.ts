@@ -4,13 +4,18 @@
 
 export type Role = 'ADMIN' | 'WAREHOUSE_WORKER' | 'DELIVERY_DRIVER' | 'FINANCE';
 
-export type OrderStatus =
-  | 'PENDING'
-  | 'PROCESSING'
-  | 'PACKED'
-  | 'IN_TRANSIT'
-  | 'DELIVERED'
-  | 'CANCELLED';
+export type OrderStatus = string;
+
+export interface OrderStatusConfig {
+  id: string;
+  code: string;
+  label: string;
+  colorClass: string;
+  orderIndex: number;
+  isSystem: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 export interface User {
   id: string;

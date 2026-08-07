@@ -421,5 +421,39 @@ export const api = {
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   }
+  async getOrderStatuses(): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/order-statuses`, { headers: getHeaders() });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async createOrderStatus(data: any): Promise<any> {
+    const res = await fetch(`${API_BASE}/order-statuses`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async updateOrderStatus(id: string, data: any): Promise<any> {
+    const res = await fetch(`${API_BASE}/order-statuses/${id}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async deleteOrderStatus(id: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/order-statuses/${id}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  }
 };
 

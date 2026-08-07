@@ -34,14 +34,7 @@ enum TransactionType {
   ADJUSTMENT
 }
 
-enum OrderStatus {
-  PENDING
-  PROCESSING
-  PACKED
-  IN_TRANSIT
-  DELIVERED
-  CANCELLED
-}
+// OrderStatus is now dynamic (stored in OrderStatusConfig)
 
 enum TaskPriority {
   LOW
@@ -205,7 +198,7 @@ model Order {
   orderNumber   String         @unique
   branchId      String
   branch        Branch         @relation(fields: [branchId], references: [id])
-  status        OrderStatus    @default(PENDING)
+  status        String         @default("PENDING")
   totalAmount   Decimal        @db.Decimal(10, 2)
   baseTotalAmount Decimal      @db.Decimal(10, 2) @default(0)
   marginProfit  Decimal        @db.Decimal(10, 2) @default(0)
@@ -220,6 +213,19 @@ model Order {
   updatedAt     DateTime       @updatedAt
 
   @@map("orders")
+}
+
+model OrderStatusConfig {
+  id         String   @id @default(cuid())
+  code       String   @unique
+  label      String
+  colorClass String
+  orderIndex Int      @default(0)
+  isSystem   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("order_status_configs")
 }
 
 model OrderItem {
@@ -245,7 +251,7 @@ model OrderHistory {
   order         Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
   changedById   String
   changedBy     User        @relation("HistoryUser", fields: [changedById], references: [id])
-  status        OrderStatus
+  status        String
   notes         String?
   itemsSnapshot String      // JSON string of items & quantities at transition time
   createdAt     DateTime    @default(now())

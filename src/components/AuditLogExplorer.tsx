@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Order, OrderHistory, Role, OrderStatus, Product } from '../types/wms';
+import React, { useState, useEffect } from 'react';
+import { Order, OrderHistory, Role, OrderStatus, Product, OrderStatusConfig } from '../types/wms';
+import { api } from '../lib/api';
 import { History, Search, Filter, ShieldCheck, User, Clock, FileText, Code2, Eye, Package } from 'lucide-react';
 
 interface AuditLogExplorerProps {
@@ -49,22 +50,19 @@ export const AuditLogExplorer: React.FC<AuditLogExplorerProps> = ({ orders, prod
     DELIVERY_DRIVER: 'Жолооч',
   };
 
-  const statusColors: Record<OrderStatus, string> = {
-    PENDING: 'bg-amber-50 text-amber-800 border-amber-200',
-    PROCESSING: 'bg-blue-50 text-blue-800 border-blue-200',
-    PACKED: 'bg-indigo-50 text-indigo-800 border-indigo-200',
-    IN_TRANSIT: 'bg-purple-50 text-purple-800 border-purple-200',
-    DELIVERED: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-    CANCELLED: 'bg-red-50 text-red-800 border-red-200',
+  const [orderStatuses, setOrderStatuses] = useState<OrderStatusConfig[]>([]);
+  useEffect(() => {
+    api.getOrderStatuses().then(setOrderStatuses).catch(console.error);
+  }, []);
+
+  const getStatusBadge = (code: string) => {
+    const st = orderStatuses.find(s => s.code === code);
+    return st ? st.colorClass : 'bg-slate-50 text-slate-800 border-slate-200';
   };
 
-  const statusTranslations: Record<OrderStatus, string> = {
-    PENDING: 'Хүлээгдэж буй',
-    PROCESSING: 'Боловсруулж буй',
-    PACKED: 'Савлагдсан',
-    IN_TRANSIT: 'Тээвэрлэлтэд',
-    DELIVERED: 'Хүргэгдсэн',
-    CANCELLED: 'Цуцлагдсан',
+  const getStatusLabel = (code: string) => {
+    const st = orderStatuses.find(s => s.code === code);
+    return st ? st.label : code;
   };
 
   return (
@@ -151,8 +149,8 @@ export const AuditLogExplorer: React.FC<AuditLogExplorerProps> = ({ orders, prod
                       </td>
 
                       <td className="p-4">
-                        <span className={`px-2.5 py-0.5 rounded text-[10px] font-extrabold border ${statusColors[log.status]}`}>
-                          {statusTranslations[log.status]}
+                        <span className={`px-2.5 py-0.5 rounded text-[10px] font-extrabold border ${getStatusBadge(log.status)}`}>
+                          {getStatusLabel(log.status)}
                         </span>
                       </td>
 
@@ -164,7 +162,7 @@ export const AuditLogExplorer: React.FC<AuditLogExplorerProps> = ({ orders, prod
                         <button
                           onClick={() =>
                             setSelectedSnapshot({
-                              title: `Захиалга ${log.orderNumber} Snapshot (${statusTranslations[log.status]})`,
+                              title: `Захиалга ${log.orderNumber} Snapshot (${getStatusLabel(log.status)})`,
                               json: log.itemsSnapshot,
                             })
                           }

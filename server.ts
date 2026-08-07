@@ -1617,6 +1617,70 @@ app.get('/api/financial-summary', authenticate(), async (req, res) => {
   }
 });
 
+// ------------------------------------------
+// Order Status Configuration
+// ------------------------------------------
+
+app.get('/api/order-statuses', authenticate(), async (req, res) => {
+  try {
+    const statuses = await prisma.orderStatusConfig.findMany({
+      orderBy: { orderIndex: 'asc' }
+    });
+    res.json(statuses);
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
+
+app.post('/api/order-statuses', authenticate(['ADMIN']), async (req, res) => {
+  try {
+    const { code, label, colorClass, orderIndex, isSystem } = req.body;
+    const status = await prisma.orderStatusConfig.create({
+      data: { code, label, colorClass, orderIndex, isSystem: isSystem || false }
+    });
+    res.status(201).json(status);
+  } catch (err) {
+    handleApiError(res, err, 400);
+  }
+});
+
+app.put('/api/order-statuses/:id', authenticate(['ADMIN']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { label, colorClass, orderIndex } = req.body;
+    
+    // Check if system
+    const existing = await prisma.orderStatusConfig.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ error: 'Status not found' });
+
+    const status = await prisma.orderStatusConfig.update({
+      where: { id },
+      data: { label, colorClass, orderIndex }
+    });
+    res.json(status);
+  } catch (err) {
+    handleApiError(res, err, 400);
+  }
+});
+
+app.delete('/api/order-statuses/:id', authenticate(['ADMIN']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await prisma.orderStatusConfig.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ error: 'Status not found' });
+    if (existing.isSystem) return res.status(400).json({ error: 'Cannot delete system status' });
+
+    // Check if in use
+    const ordersInUse = await prisma.order.count({ where: { status: existing.code } });
+    if (ordersInUse > 0) return res.status(400).json({ error: `Cannot delete status in use by ${ordersInUse} orders` });
+
+    await prisma.orderStatusConfig.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (err) {
+    handleApiError(res, err, 400);
+  }
+});
+
 // Start Server conditionally (for local development)
 if (process.env.NODE_ENV !== 'production' && process.env.VERCEL_ENV !== 'production') {
   app.listen(3001, () => {

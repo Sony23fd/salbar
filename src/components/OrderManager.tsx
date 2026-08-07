@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Order, Branch, Product, User, OrderStatus } from '../types/wms';
+import { Order, Branch, Product, User, OrderStatus, OrderStatusConfig } from '../types/wms';
 import { createOrder } from '../actions/order';
 import { db } from '../lib/db';
 import { ShoppingCart, Plus, Search, Filter, Truck, CheckCircle2, AlertTriangle, ShieldAlert, Clock, ChevronRight, Package, MapPin, X, Trash2, Settings, History } from 'lucide-react';
+import { OrderStatusSettingsModal } from './OrderStatusSettingsModal';
+import { api } from '../lib/api';
 
 interface OrderManagerProps {
   orders: Order[];
@@ -49,23 +51,30 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
   const [adminNotes, setAdminNotes] = useState('');
   const [isAdminSubmitting, setIsAdminSubmitting] = useState(false);
 
-  // Status Badge Styling
-  const statusBadges: Record<OrderStatus, string> = {
-    PENDING: 'bg-amber-100 text-amber-800 border-amber-200',
-    PROCESSING: 'bg-blue-100 text-blue-800 border-blue-200',
-    PACKED: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-    IN_TRANSIT: 'bg-purple-100 text-purple-800 border-purple-200',
-    DELIVERED: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    CANCELLED: 'bg-red-100 text-red-800 border-red-200',
+  // Dynamic Statuses
+  const [orderStatuses, setOrderStatuses] = useState<OrderStatusConfig[]>([]);
+  const [showStatusSettings, setShowStatusSettings] = useState(false);
+
+  React.useEffect(() => {
+    const fetchStatuses = async () => {
+      try {
+        const data = await api.getOrderStatuses();
+        setOrderStatuses(data);
+      } catch (err) {
+        console.error('Failed to load order statuses', err);
+      }
+    };
+    fetchStatuses();
+  }, []);
+
+  const getStatusBadge = (code: string) => {
+    const st = orderStatuses.find(s => s.code === code);
+    return st ? st.colorClass : 'bg-slate-100 text-slate-800 border-slate-200';
   };
 
-  const statusTranslations: Record<OrderStatus, string> = {
-    PENDING: 'Хүлээгдэж буй',
-    PROCESSING: 'Боловсруулж буй',
-    PACKED: 'Савлагдсан',
-    IN_TRANSIT: 'Тээвэрлэлтэд',
-    DELIVERED: 'Хүргэгдсэн',
-    CANCELLED: 'Цуцлагдсан',
+  const getStatusLabel = (code: string) => {
+    const st = orderStatuses.find(s => s.code === code);
+    return st ? st.label : code;
   };
 
   // Filter Orders
@@ -191,40 +200,51 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
       {/* Status Tabs */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2 overflow-x-auto pb-2 -mb-2 hide-scrollbar">
-          <button
-            onClick={() => setStatusFilter('ALL')}
-            className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-              statusFilter === 'ALL'
-                ? 'bg-slate-900 text-white shadow-md'
-                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
-            }`}
-          >
-            Бүгд <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'ALL' ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>{orders.length}</span>
-          </button>
-          
-          {(['PENDING', 'PROCESSING', 'PACKED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED'] as OrderStatus[]).map((status) => {
-            const count = orders.filter((o) => o.status === status).length;
-            const isActive = statusFilter === status;
+          <div className="flex items-center gap-2 flex-1">
+            <button
+              onClick={() => setStatusFilter('ALL')}
+              className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                statusFilter === 'ALL'
+                  ? 'bg-slate-900 text-white shadow-md'
+                  : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+              }`}
+            >
+              Бүгд <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'ALL' ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>{orders.length}</span>
+            </button>
             
-            return (
-              <button
-                key={status}
-                onClick={() => setStatusFilter(status)}
-                className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  isActive
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
-                }`}
-              >
-                {statusTranslations[status]}
-                {count > 0 && (
-                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${isActive ? 'bg-blue-700 text-blue-100' : 'bg-blue-50 text-blue-600 font-extrabold'}`}>
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+            {orderStatuses.map((statusObj) => {
+              const count = orders.filter((o) => o.status === statusObj.code).length;
+              const isActive = statusFilter === statusObj.code;
+              
+              return (
+                <button
+                  key={statusObj.code}
+                  onClick={() => setStatusFilter(statusObj.code)}
+                  className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    isActive
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+                  }`}
+                >
+                  {statusObj.label}
+                  {count > 0 && (
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${isActive ? 'bg-blue-700 text-blue-100' : 'bg-blue-50 text-blue-600 font-extrabold'}`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          {activeUser.role === 'ADMIN' && (
+            <button
+              onClick={() => setShowStatusSettings(true)}
+              className="p-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-colors shrink-0 shadow-sm"
+              title="Төлөвийн тохиргоо"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Search & Branch Filter */}
@@ -283,8 +303,8 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
                     <span className="font-mono text-xs font-extrabold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
                       {ord.orderNumber}
                     </span>
-                    <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full border ${statusBadges[ord.status]}`}>
-                      {statusTranslations[ord.status]}
+                    <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full border ${getStatusBadge(ord.status)}`}>
+                      {getStatusLabel(ord.status)}
                     </span>
                   </div>
 
@@ -417,9 +437,9 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
                   onChange={(e) => setAdminStatus(e.target.value as OrderStatus)}
                   className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-medium"
                 >
-                  {(Object.keys(statusTranslations) as OrderStatus[]).map((st) => (
-                    <option key={st} value={st}>
-                      {statusTranslations[st]}
+                  {orderStatuses.map((st) => (
+                    <option key={st.code} value={st.code}>
+                      {st.label}
                     </option>
                   ))}
                 </select>
@@ -451,7 +471,7 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
                         <div className="w-2 h-2 rounded-full bg-blue-400 mt-1 relative z-10 shrink-0" />
                         <div className="flex-1 pb-1">
                           <div className="flex items-center justify-between">
-                            <strong className="text-slate-800">{statusTranslations[hist.status]}</strong>
+                            <strong className="text-slate-800">{getStatusLabel(hist.status)}</strong>
                             <span className="text-[10px] text-slate-400">
                               {new Date(hist.createdAt).toLocaleString('mn-MN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </span>
@@ -639,6 +659,15 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
             </form>
           </div>
         </div>
+      )}
+      {showStatusSettings && (
+        <OrderStatusSettingsModal
+          onClose={() => setShowStatusSettings(false)}
+          onRefresh={() => {
+            api.getOrderStatuses().then(setOrderStatuses);
+            onRefresh();
+          }}
+        />
       )}
     </div>
   );

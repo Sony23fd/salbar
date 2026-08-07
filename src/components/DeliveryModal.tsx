@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Order, User, Product } from '../types/wms';
+import React, { useState, useEffect } from 'react';
+import { Order, User, Product, OrderStatusConfig } from '../types/wms';
 import { confirmDelivery } from '../actions/delivery';
 import { OrderHistoryTimeline } from './OrderHistoryTimeline';
+import { api } from '../lib/api';
 import { X, Truck, ShieldAlert, CheckCircle2, AlertTriangle, MapPin, PackageCheck, FileText } from 'lucide-react';
 
 interface DeliveryModalProps {
@@ -21,6 +22,11 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const [orderStatuses, setOrderStatuses] = useState<OrderStatusConfig[]>([]);
+  useEffect(() => {
+    api.getOrderStatuses().then(setOrderStatuses).catch(console.error);
+  }, []);
+
   const [selectedDriverId, setSelectedDriverId] = useState<string>(
     currentUser.role === 'DELIVERY_DRIVER' ? currentUser.id : drivers[0]?.id || currentUser.id
   );
@@ -314,7 +320,7 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
               )}
             </div>
           ) : (
-            <OrderHistoryTimeline historyLogs={order.history} currentStatus={order.status} products={allProducts} />
+            <OrderHistoryTimeline historyLogs={order.history} currentStatus={order.status} products={allProducts} orderStatuses={orderStatuses} />
           )}
         </div>
       </div>

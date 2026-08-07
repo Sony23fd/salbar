@@ -145,29 +145,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const recentOrders = [...filteredOrders].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  ).slice(0, 5);
 
-  const statusTranslations: Record<OrderStatus, string> = {
-    PENDING: 'Хүлээгдэж буй',
-    PROCESSING: 'Боловсруулж буй',
-    PACKED: 'Савлагдсан',
-    IN_TRANSIT: 'Тээвэрлэлтэд',
-    DELIVERED: 'Хүргэгдсэн',
-    CANCELLED: 'Цуцлагдсан',
+  // Status Badge Styling
+  const [orderStatuses, setOrderStatuses] = useState<OrderStatusConfig[]>([]);
+  useEffect(() => {
+    api.getOrderStatuses().then(setOrderStatuses).catch(console.error);
+  }, []);
+
+  const getStatusBadge = (code: string) => {
+    const st = orderStatuses.find(s => s.code === code);
+    return st ? st.colorClass : 'bg-slate-100 text-slate-800 border-slate-200';
   };
 
-  const statusBadges: Record<OrderStatus, string> = {
-    PENDING: 'bg-amber-100 text-amber-800 border-amber-200',
-    PROCESSING: 'bg-blue-100 text-blue-800 border-blue-200',
-    PACKED: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-    IN_TRANSIT: 'bg-purple-100 text-purple-800 border-purple-200',
-    DELIVERED: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    CANCELLED: 'bg-red-100 text-red-800 border-red-200',
+  const getStatusLabel = (code: string) => {
+    const st = orderStatuses.find(s => s.code === code);
+    return st ? st.label : code;
   };
 
   return (
     <div className="space-y-6">
-      {/* 1. 7-DAY INACTIVE BRANCH WARNING ALERT BANNER */}
+      {/* Header */}
       <InactiveBranchAlertComponent
         alerts={inactiveAlerts}
         onQuickOrder={onQuickOrder}
@@ -418,8 +415,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       {ord.totalAmount.toLocaleString()}₮
                     </td>
                     <td className="p-3 text-center">
-                      <span className={`px-2.5 py-1 text-[11px] font-bold rounded-full border ${statusBadges[ord.status]}`}>
-                        {statusTranslations[ord.status]}
+                      <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full border ${getStatusBadge(ord.status)}`}>
+                        {getStatusLabel(ord.status)}
                       </span>
                     </td>
                     <td className="p-3 text-center">
