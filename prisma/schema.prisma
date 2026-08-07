@@ -186,6 +186,8 @@ model InventoryTransaction {
   notes         String?
   createdAt     DateTime        @default(now())
 
+  @@index([productId])
+  @@index([type])
   @@map("inventory_transactions")
 }
 
@@ -212,6 +214,9 @@ model Order {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
+  @@index([status])
+  @@index([branchId])
+  @@index([createdAt])
   @@map("orders")
 }
 
@@ -256,6 +261,7 @@ model OrderHistory {
   itemsSnapshot String      // JSON string of items & quantities at transition time
   createdAt     DateTime    @default(now())
 
+  @@index([orderId])
   @@map("order_histories")
 }
 
@@ -465,6 +471,8 @@ model ProductionBatch {
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
 
+  @@index([finishedProductId])
+  @@index([createdAt])
   @@map("production_batches")
 }
 

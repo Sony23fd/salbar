@@ -491,20 +491,49 @@ app.get('/api/reports/transactions', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 
   }
 });
 
+app.get('/api/reports/transactions/paginated', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE']), async (req, res) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const skip = (page - 1) * limit;
+
+    const [total, transactions] = await Promise.all([
+      prisma.inventoryTransaction.count(),
+      prisma.inventoryTransaction.findMany({
+        skip,
+        take: limit,
+        include: {
+          product: { select: { sku: true, name: true } },
+          user: { select: { name: true, role: true } }
+        },
+        orderBy: { createdAt: 'desc' }
+      })
+    ]);
+
+    res.json({
+      data: transactions,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit)
+    });
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
+
 // Orders
 app.get('/api/orders', authenticate(), async (req, res) => {
+  // Lightweight orders for global dashboard stats
   const orders = await prisma.order.findMany({
     include: {
-      branch: true,
-      createdBy: true,
-      deliveredBy: true,
-      items: { include: { product: true } },
-      history: { include: { changedBy: true }, orderBy: { createdAt: 'asc' } },
+      branch: { select: { name: true, location: true } },
+      createdBy: { select: { name: true } },
+      deliveredBy: { select: { name: true } },
+      // items and history removed to save bandwidth
     },
     orderBy: { createdAt: 'desc' },
   });
   
-  // Format to match frontend types
   const formattedOrders = orders.map(o => ({
     id: o.id,
     orderNumber: o.orderNumber,
@@ -522,17 +551,86 @@ app.get('/api/orders', authenticate(), async (req, res) => {
     deliveredAt: o.deliveredAt,
     createdAt: o.createdAt,
     updatedAt: o.updatedAt,
-    items: o.items.map(i => ({
-      id: i.id,
-      orderId: i.orderId,
-      productId: i.productId,
-      productName: i.product?.name,
-      sku: i.product?.sku,
-      quantity: i.quantity,
-      unitPrice: Number(i.unitPrice),
-      totalPrice: Number(i.totalPrice),
-    })),
-    history: o.history.map(h => ({
+    items: [], // Set to empty to avoid breaking types
+    history: []
+  }));
+  
+  res.json(formattedOrders);
+});
+
+app.get('/api/orders/paginated', authenticate(), async (req, res) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const skip = (page - 1) * limit;
+
+    const [total, orders] = await Promise.all([
+      prisma.order.count(),
+      prisma.order.findMany({
+        skip,
+        take: limit,
+        include: {
+          branch: true,
+          createdBy: true,
+          deliveredBy: true,
+          items: { include: { product: true } },
+          // Note: history is still omitted for list view
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+    ]);
+
+    const formattedOrders = orders.map(o => ({
+      id: o.id,
+      orderNumber: o.orderNumber,
+      branchId: o.branchId,
+      branchName: o.branch?.name,
+      branchLocation: o.branch?.location,
+      status: o.status,
+      totalAmount: Number(o.totalAmount),
+      baseTotalAmount: Number(o.baseTotalAmount || 0),
+      marginProfit: Number(o.marginProfit || 0),
+      createdById: o.createdById,
+      createdByName: o.createdBy?.name,
+      deliveredById: o.deliveredById,
+      deliveredByName: o.deliveredBy?.name,
+      deliveredAt: o.deliveredAt,
+      createdAt: o.createdAt,
+      updatedAt: o.updatedAt,
+      items: o.items.map(i => ({
+        id: i.id,
+        orderId: i.orderId,
+        productId: i.productId,
+        productName: i.product?.name,
+        sku: i.product?.sku,
+        quantity: i.quantity,
+        unitPrice: Number(i.unitPrice),
+        totalPrice: Number(i.totalPrice),
+      })),
+      history: []
+    }));
+
+    res.json({
+      data: formattedOrders,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit)
+    });
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
+
+app.get('/api/orders/:id/history', authenticate(), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const history = await prisma.orderHistory.findMany({
+      where: { orderId: id },
+      include: { changedBy: true },
+      orderBy: { createdAt: 'asc' }
+    });
+    
+    const formatted = history.map(h => ({
       id: h.id,
       orderId: h.orderId,
       changedById: h.changedById,
@@ -542,11 +640,58 @@ app.get('/api/orders', authenticate(), async (req, res) => {
       notes: h.notes,
       itemsSnapshot: h.itemsSnapshot,
       createdAt: h.createdAt,
-    }))
-  }));
-  
-  res.json(formattedOrders);
+    }));
+    
+    res.json(formatted);
+  } catch (err) {
+    handleApiError(res, err);
+  }
 });
+
+app.get('/api/order-histories/paginated', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE']), async (req, res) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const skip = (page - 1) * limit;
+
+    const [total, history] = await Promise.all([
+      prisma.orderHistory.count(),
+      prisma.orderHistory.findMany({
+        skip,
+        take: limit,
+        include: { 
+          order: { include: { branch: true } }, 
+          changedBy: true 
+        },
+        orderBy: { createdAt: 'desc' }
+      })
+    ]);
+
+    const formatted = history.map(h => ({
+      id: h.id,
+      orderId: h.orderId,
+      orderNumber: h.order?.orderNumber,
+      branchName: h.order?.branch?.name,
+      changedById: h.changedById,
+      changedByName: h.changedBy?.name,
+      changedByRole: h.changedBy?.role,
+      status: h.status,
+      notes: h.notes,
+      itemsSnapshot: h.itemsSnapshot,
+      createdAt: h.createdAt,
+    }));
+
+    res.json({
+      data: formatted,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit)
+    });
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
+
 
 app.post('/api/orders', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async (req, res) => {
   const { branchId, createdById, itemsInput, notes } = req.body;
@@ -1220,6 +1365,36 @@ app.get('/api/production-batches', authenticate(), async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
     res.json(batches);
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
+
+app.get('/api/production-batches/paginated', authenticate(), async (req, res) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const skip = (page - 1) * limit;
+
+    const [total, batches] = await Promise.all([
+      prisma.productionBatch.count(),
+      prisma.productionBatch.findMany({
+        skip,
+        take: limit,
+        include: {
+          finishedProduct: true,
+          items: { include: { ingredient: true } }
+        },
+        orderBy: { createdAt: 'desc' }
+      })
+    ]);
+    
+    res.json({
+      data: batches,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit)
+    });
   } catch (err) {
     handleApiError(res, err);
   }

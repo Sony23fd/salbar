@@ -193,6 +193,24 @@ export const api = {
     return res.json();
   },
 
+  async getPaginatedOrders(page: number, limit: number): Promise<{ data: Order[], total: number, page: number, totalPages: number }> {
+    const res = await fetch(`${API_BASE}/orders/paginated?page=${page}&limit=${limit}`, { headers: getHeaders() });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async getOrderHistory(id: string): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/orders/${id}/history`, { headers: getHeaders() });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async getPaginatedOrderHistories(page: number, limit: number): Promise<{ data: any[], total: number, page: number, totalPages: number }> {
+    const res = await fetch(`${API_BASE}/order-histories/paginated?page=${page}&limit=${limit}`, { headers: getHeaders() });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
   async createOrder(branchId: string, createdById: string, itemsInput: { productId: string; quantity: number }[], notes?: string): Promise<Order> {
     const res = await fetch(`${API_BASE}/orders`, {
       method: 'POST',
