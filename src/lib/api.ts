@@ -299,13 +299,13 @@ export const api = {
   },
 
   // Manufacturing & Costing API
-  async getBOMs(): Promise<BOM[]> {
+  async getBOMs(): Promise<any[]> {
     const res = await fetch(`${API_BASE}/boms`, { headers: getHeaders() });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },
 
-  async saveBOM(data: Partial<BOM> & { finishedProductId: string; items: any[] }): Promise<BOM> {
+  async saveBOM(data: any): Promise<any> {
     const res = await fetch(`${API_BASE}/boms`, {
       method: 'POST',
       headers: getHeaders(),
@@ -324,13 +324,13 @@ export const api = {
     return res.json();
   },
 
-  async getDeboningLogs(): Promise<DeboningLog[]> {
+  async getDeboningLogs(): Promise<any[]> {
     const res = await fetch(`${API_BASE}/deboning-logs`, { headers: getHeaders() });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },
 
-  async saveDeboningLog(data: Partial<DeboningLog>): Promise<DeboningLog> {
+  async saveDeboningLog(data: any): Promise<any> {
     const res = await fetch(`${API_BASE}/deboning-logs`, {
       method: 'POST',
       headers: getHeaders(),
@@ -340,13 +340,13 @@ export const api = {
     return res.json();
   },
 
-  async getLivestockLedgers(): Promise<LivestockLedger[]> {
+  async getLivestockLedgers(): Promise<any[]> {
     const res = await fetch(`${API_BASE}/livestock-ledgers`, { headers: getHeaders() });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },
 
-  async saveLivestockLedger(data: Partial<LivestockLedger>): Promise<LivestockLedger> {
+  async saveLivestockLedger(data: any): Promise<any> {
     const res = await fetch(`${API_BASE}/livestock-ledgers`, {
       method: 'POST',
       headers: getHeaders(),
@@ -385,6 +385,8 @@ export const api = {
     normalScrapAmount?: number;
     abnormalScrapAmount?: number;
     notes?: string;
+    checklistStatus?: string;
+    scrapAnalysisAlert?: string;
     customIngredients?: { ingredientId: string; quantityUsed: number }[];
   }): Promise<any> {
     const res = await fetch(`${API_BASE}/production-batches`, {
@@ -420,7 +422,7 @@ export const api = {
     const res = await fetch(url, { headers: getHeaders() });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
-  }
+  },
   async getOrderStatuses(): Promise<any[]> {
     const res = await fetch(`${API_BASE}/order-statuses`, { headers: getHeaders() });
     if (!res.ok) throw new Error(await res.text());

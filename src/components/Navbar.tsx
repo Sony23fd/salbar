@@ -25,12 +25,14 @@ export const Navbar: React.FC<NavbarProps> = ({
     ADMIN: 'Админ',
     WAREHOUSE_WORKER: 'Агуулахын ажилтан',
     DELIVERY_DRIVER: 'Хүргэлтийн жолооч',
+    FINANCE: 'Санхүү',
   };
 
   const roleBadgeColors: Record<Role, string> = {
     ADMIN: 'bg-purple-100 text-purple-700 border-purple-200',
     WAREHOUSE_WORKER: 'bg-blue-100 text-blue-700 border-blue-200',
     DELIVERY_DRIVER: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+    FINANCE: 'bg-yellow-100 text-yellow-700 border-yellow-200',
   };
 
   return (

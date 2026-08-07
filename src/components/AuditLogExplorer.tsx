@@ -42,12 +42,14 @@ export const AuditLogExplorer: React.FC<AuditLogExplorerProps> = ({ orders, prod
     ADMIN: 'bg-purple-50 text-purple-700 border-purple-200',
     WAREHOUSE_WORKER: 'bg-blue-50 text-blue-700 border-blue-200',
     DELIVERY_DRIVER: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    FINANCE: 'bg-yellow-50 text-yellow-700 border-yellow-200',
   };
 
   const roleTranslations: Record<Role, string> = {
     ADMIN: 'Админ',
     WAREHOUSE_WORKER: 'Агуулахын ажилтан',
     DELIVERY_DRIVER: 'Жолооч',
+    FINANCE: 'Санхүү',
   };
 
   const [orderStatuses, setOrderStatuses] = useState<OrderStatusConfig[]>([]);
