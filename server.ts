@@ -1448,6 +1448,15 @@ app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER']),
 
 app.get('/api/financial-summary', authenticate(), async (req, res) => {
   try {
+    const { startDate, endDate } = req.query;
+    const dateFilter: any = {};
+    if (startDate && endDate) {
+      dateFilter.createdAt = {
+        gte: new Date(startDate as string),
+        lte: new Date(endDate as string)
+      };
+    }
+
     const products = await prisma.product.findMany({
       where: { isActive: true },
       include: { category: true }
@@ -1461,15 +1470,22 @@ app.get('/api/financial-summary', authenticate(), async (req, res) => {
     const bomMap = new Map(boms.map(b => [b.finishedProductId, b]));
 
     const procurements = await prisma.procurement.findMany({
+      where: dateFilter,
       include: { items: true }
     });
 
     const productionBatches = await prisma.productionBatch.findMany({
+      where: dateFilter,
       include: { items: true }
     });
 
     const deliveredOrders = await prisma.order.findMany({
-      where: { status: 'DELIVERED' }
+      where: { status: 'DELIVERED', ...dateFilter }
+    });
+
+    const adjustments = await prisma.inventoryTransaction.findMany({
+      where: { type: 'ADJUSTMENT', ...dateFilter },
+      include: { product: true }
     });
 
     // 1. Inventory Valuation by Material Type
@@ -1564,6 +1580,14 @@ app.get('/api/financial-summary', authenticate(), async (req, res) => {
     const totalFixedOverheadCost = productionBatches.reduce((sum, pb) => sum + Number(pb.fixedOverheadCost), 0);
     const totalNormalScrapLoss = productionBatches.reduce((sum, pb) => sum + Number(pb.normalScrapAmount), 0);
     const totalAbnormalScrapLoss = productionBatches.reduce((sum, pb) => sum + Number(pb.abnormalScrapAmount), 0);
+    
+    // Calculate Adjustment impact (negative is loss, positive is gain)
+    const totalAdjustmentImpact = adjustments.reduce((sum, adj) => {
+      const price = Number(adj.product.costPrice) > 0 ? Number(adj.product.costPrice) : Number(adj.product.unitPrice);
+      const diff = adj.newStock - adj.previousStock;
+      return sum + (diff * price);
+    }, 0);
+
     const totalScrapLoss = totalNormalScrapLoss + totalAbnormalScrapLoss;
     const totalProductionCost = productionBatches.reduce((sum, pb) => sum + Number(pb.totalProductionCost), 0);
 
@@ -1584,7 +1608,8 @@ app.get('/api/financial-summary', authenticate(), async (req, res) => {
         totalProductionCost,
         totalDeliveredRevenue,
         totalDeliveredBaseCost,
-        totalDeliveredNetProfit
+        totalDeliveredNetProfit,
+        totalAdjustmentImpact
       }
     });
   } catch (err) {

@@ -1,25 +1,48 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { InventoryTransaction } from '../types/wms';
 import { db } from '../lib/db';
-import { FileText, Search, ArrowUpRight, ArrowDownRight, Settings2, Download } from 'lucide-react';
+import { api } from '../lib/api';
+import { FileText, Search, ArrowUpRight, ArrowDownRight, Settings2, Download, TrendingUp, AlertTriangle, PieChart, Boxes } from 'lucide-react';
 
 export const ReportsManager: React.FC = () => {
   const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('ALL');
+  
+  // Financial Summary State
+  const [financialData, setFinancialData] = useState<any>(null);
+  const [dateRange, setDateRange] = useState<'30days' | 'thisMonth' | 'all'>('all');
+
+  const { startDate, endDate } = useMemo(() => {
+    if (dateRange === 'all') return { startDate: undefined, endDate: undefined };
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    let start = new Date();
+    if (dateRange === '30days') {
+      start.setDate(start.getDate() - 30);
+    } else if (dateRange === 'thisMonth') {
+      start.setDate(1);
+    }
+    start.setHours(0, 0, 0, 0);
+    return { startDate: start.toISOString(), endDate: end.toISOString() };
+  }, [dateRange]);
 
   useEffect(() => {
-    loadTransactions();
-  }, []);
+    loadData();
+  }, [startDate, endDate]);
 
-  const loadTransactions = async () => {
+  const loadData = async () => {
     try {
       setIsLoading(true);
-      const data = await db.getTransactions();
-      setTransactions(data);
+      const [txData, finData] = await Promise.all([
+        db.getTransactions(),
+        api.getFinancialSummary(startDate, endDate)
+      ]);
+      setTransactions(txData);
+      setFinancialData(finData);
     } catch (err) {
-      console.error('Failed to load transactions', err);
+      console.error('Failed to load reports data', err);
     } finally {
       setIsLoading(false);
     }
@@ -30,7 +53,15 @@ export const ReportsManager: React.FC = () => {
                           t.product?.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           t.notes?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = typeFilter === 'ALL' || t.type === typeFilter;
-    return matchesSearch && matchesType;
+    
+    // Apply Date Range filter to transactions in UI as well
+    let matchesDate = true;
+    if (startDate && endDate) {
+      const txDate = new Date(t.createdAt).getTime();
+      matchesDate = txDate >= new Date(startDate).getTime() && txDate <= new Date(endDate).getTime();
+    }
+    
+    return matchesSearch && matchesType && matchesDate;
   });
 
   const getTransactionIcon = (type: string) => {
@@ -45,118 +76,204 @@ export const ReportsManager: React.FC = () => {
     return 'Тохируулга';
   };
 
+  const summary = financialData?.summary;
+
+  const downloadExcel = () => {
+    if (!summary) return;
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
+      + "Үзүүлэлт,Дүн\n"
+      + `Нийт татан авалт,${summary.totalProcurementAmount}\n`
+      + `Үйлдвэрт олгосон ТЭМ,${summary.totalMaterialsIssuedCost}\n`
+      + `Үйлдвэрлэлийн тогтмол зардал,${summary.totalFixedOverheadCost}\n`
+      + `Нийт хорогдол,${summary.totalScrapLoss}\n`
+      + `Агуулахын тохируулга (Устгал/Илүүдэл),${summary.totalAdjustmentImpact}\n`
+      + `Нийт үйлдвэрлэлийн өртөг,${summary.totalProductionCost}\n`
+      + `Нийт борлуулалтын орлого,${summary.totalDeliveredRevenue}\n`
+      + `Цэвэр ашиг,${summary.totalDeliveredNetProfit}\n`;
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "financial_summary.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
         <div>
           <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
             <FileText className="w-6 h-6 text-blue-600" />
-            Агуулахын хөдөлгөөн & Тайлан
+            Санхүүгийн нэгдсэн тайлан & Хөдөлгөөн
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Барааны орлого, зарлага, тохируулгын бүрэн түүх.
+            Байгууллагын нийт орлого, зардал, хорогдол болон агуулахын гүйлгээний түүх.
           </p>
         </div>
         
-        <button
-          onClick={() => alert('Excel татах үйлдэл хөгжүүлэгдэж байна')}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all shadow-sm border border-slate-200"
-        >
-          <Download className="w-4 h-4" />
-          Excel татах
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="relative md:col-span-2">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Барааны нэр, SKU эсвэл тайлбараар хайх..."
-            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
-          />
-        </div>
-        <div>
+        <div className="flex items-center gap-3">
           <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-xs font-medium"
+            value={dateRange}
+            onChange={(e) => setDateRange(e.target.value as any)}
+            className="px-4 py-2 rounded-xl text-xs font-bold bg-white border border-slate-200 text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="ALL">Бүх гүйлгээ</option>
-            <option value="INBOUND">Орлого (Татан авалт)</option>
-            <option value="OUTBOUND">Зарлага (Хүргэлт)</option>
-            <option value="ADJUSTMENT">Тохируулга</option>
+            <option value="all">Бүх хугацаа</option>
+            <option value="thisMonth">Энэ сар</option>
+            <option value="30days">Сүүлийн 30 хоног</option>
           </select>
+          
+          <button
+            onClick={downloadExcel}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 transition-all shadow-sm border border-blue-200"
+          >
+            <Download className="w-4 h-4" />
+            Excel татах
+          </button>
         </div>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-600 uppercase font-semibold text-[11px] tracking-wider border-b border-slate-200">
-              <tr>
-                <th className="p-4">Огноо</th>
-                <th className="p-4">Гүйлгээний төрөл</th>
-                <th className="p-4">Бараа</th>
-                <th className="p-4 text-right">Өмнөх үлдэгдэл</th>
-                <th className="p-4 text-right">Тоо хэмжээ</th>
-                <th className="p-4 text-right">Шинэ үлдэгдэл</th>
-                <th className="p-4">Хариуцсан хэрэглэгч</th>
-                <th className="p-4">Тайлбар</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-sans">
-              {isLoading ? (
+      {/* COMPREHENSIVE FINANCIAL DASHBOARD */}
+      {summary && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in duration-300">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+            <div className="flex items-center gap-2 text-slate-500 font-bold text-[10px] uppercase tracking-wider">
+              <ArrowDownRight className="w-4 h-4 text-blue-500" /> Татан авалт (Зардал)
+            </div>
+            <div className="text-2xl font-black text-slate-900 font-mono">
+              ₮{(summary.totalProcurementAmount || 0).toLocaleString()}
+            </div>
+          </div>
+
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+            <div className="flex items-center gap-2 text-slate-500 font-bold text-[10px] uppercase tracking-wider">
+              <Boxes className="w-4 h-4 text-amber-500" /> Үйлдвэрлэлд олгосон
+            </div>
+            <div className="text-2xl font-black text-slate-900 font-mono">
+              ₮{(summary.totalMaterialsIssuedCost || 0).toLocaleString()}
+            </div>
+          </div>
+
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+            <div className="flex items-center gap-2 text-slate-500 font-bold text-[10px] uppercase tracking-wider">
+              <AlertTriangle className="w-4 h-4 text-red-500" /> Нийт Хорогдол & Тохируулга
+            </div>
+            <div className="text-2xl font-black text-red-600 font-mono">
+              ₮{(summary.totalScrapLoss - summary.totalAdjustmentImpact).toLocaleString()}
+            </div>
+            <p className="text-[10px] text-slate-500">Үйлдвэрийн хорогдол болон устгал/дутагдал</p>
+          </div>
+
+          <div className="bg-gradient-to-br from-emerald-500 to-emerald-700 p-5 rounded-2xl shadow-sm space-y-3 text-white">
+            <div className="flex items-center gap-2 text-emerald-100 font-bold text-[10px] uppercase tracking-wider">
+              <TrendingUp className="w-4 h-4 text-emerald-100" /> Борлуулалт & Цэвэр Ашиг
+            </div>
+            <div className="text-2xl font-black font-mono">
+              ₮{(summary.totalDeliveredNetProfit || 0).toLocaleString()}
+            </div>
+            <p className="text-[10px] text-emerald-100">Орлого: ₮{summary.totalDeliveredRevenue.toLocaleString()}</p>
+          </div>
+        </div>
+      )}
+
+      {/* INVENTORY TRANSACTIONS TABLE */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 px-1">
+          <FileText className="w-4 h-4 text-slate-500" /> Агуулахын дэлгэрэнгүй гүйлгээ
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="relative md:col-span-2">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Барааны нэр, SKU эсвэл тайлбараар хайх..."
+              className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+            />
+          </div>
+          <div>
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-xs font-medium"
+            >
+              <option value="ALL">Бүх гүйлгээ</option>
+              <option value="INBOUND">Орлого (Татан авалт)</option>
+              <option value="OUTBOUND">Зарлага (Хүргэлт)</option>
+              <option value="ADJUSTMENT">Тохируулга</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-600 uppercase font-semibold text-[11px] tracking-wider border-b border-slate-200">
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-500">Уншиж байна...</td>
+                  <th className="p-4">Огноо</th>
+                  <th className="p-4">Гүйлгээний төрөл</th>
+                  <th className="p-4">Бараа</th>
+                  <th className="p-4 text-right">Өмнөх үлдэгдэл</th>
+                  <th className="p-4 text-right">Тоо хэмжээ</th>
+                  <th className="p-4 text-right">Шинэ үлдэгдэл</th>
+                  <th className="p-4">Хариуцсан хэрэглэгч</th>
+                  <th className="p-4">Тайлбар</th>
                 </tr>
-              ) : filteredTransactions.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-500">Гүйлгээ олдсонгүй.</td>
-                </tr>
-              ) : (
-                filteredTransactions.map((t) => (
-                  <tr key={t.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-4 text-slate-500">
-                      {new Date(t.createdAt).toLocaleString('mn-MN')}
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-1.5 font-bold text-[11px]">
-                        {getTransactionIcon(t.type)}
-                        <span className={t.type === 'INBOUND' ? 'text-emerald-700' : t.type === 'OUTBOUND' ? 'text-blue-700' : 'text-amber-700'}>
-                          {getTransactionLabel(t.type)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="font-bold text-slate-900">{t.product?.name}</div>
-                      <div className="text-[10px] text-slate-500 font-mono">{t.product?.sku}</div>
-                    </td>
-                    <td className="p-4 text-right text-slate-500 font-mono font-medium">
-                      {t.previousStock}
-                    </td>
-                    <td className="p-4 text-right font-mono font-bold">
-                      <span className={t.quantity > 0 ? 'text-emerald-600' : 'text-red-600'}>
-                        {t.quantity > 0 ? `+${t.quantity}` : t.quantity}
-                      </span>
-                    </td>
-                    <td className="p-4 text-right text-slate-900 font-mono font-bold">
-                      {t.newStock}
-                    </td>
-                    <td className="p-4">
-                      <div className="font-semibold text-slate-900">{t.user?.name}</div>
-                      <div className="text-[10px] text-slate-500">{t.user?.role}</div>
-                    </td>
-                    <td className="p-4 text-slate-600 italic">
-                      {t.notes || '-'}
-                    </td>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-sans">
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center text-slate-500">Уншиж байна...</td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : filteredTransactions.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center text-slate-500">Гүйлгээ олдсонгүй. (Шүүлтүүрээ шалгана уу)</td>
+                  </tr>
+                ) : (
+                  filteredTransactions.map((t) => (
+                    <tr key={t.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="p-4 text-slate-500">
+                        {new Date(t.createdAt).toLocaleString('mn-MN')}
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-1.5 font-bold text-[11px]">
+                          {getTransactionIcon(t.type)}
+                          <span className={t.type === 'INBOUND' ? 'text-emerald-700' : t.type === 'OUTBOUND' ? 'text-blue-700' : 'text-amber-700'}>
+                            {getTransactionLabel(t.type)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="font-bold text-slate-900">{t.product?.name}</div>
+                        <div className="text-[10px] text-slate-500 font-mono">{t.product?.sku}</div>
+                      </td>
+                      <td className="p-4 text-right text-slate-500 font-mono font-medium">
+                        {t.previousStock}
+                      </td>
+                      <td className="p-4 text-right font-mono font-bold">
+                        <span className={t.quantity > 0 ? 'text-emerald-600' : 'text-red-600'}>
+                          {t.quantity > 0 ? `+${t.quantity}` : t.quantity}
+                        </span>
+                      </td>
+                      <td className="p-4 text-right text-slate-900 font-mono font-bold">
+                        {t.newStock}
+                      </td>
+                      <td className="p-4">
+                        <div className="font-semibold text-slate-900">{t.user?.name}</div>
+                        <div className="text-[10px] text-slate-500">{t.user?.role}</div>
+                      </td>
+                      <td className="p-4 text-slate-600 italic max-w-[200px] truncate" title={t.notes || ''}>
+                        {t.notes || '-'}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

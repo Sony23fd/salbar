@@ -36,7 +36,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
   currentUser,
   onRefreshProducts
 }) => {
-  const [activeTab, setActiveTab] = useState<'BREAKDOWN' | 'EXECUTIVE_SUMMARY' | 'OPERATIONS' | 'VALUATION'>('BREAKDOWN');
+  const [activeTab, setActiveTab] = useState<'BREAKDOWN' | 'OPERATIONS' | 'VALUATION'>('BREAKDOWN');
   const [loading, setLoading] = useState(true);
   const [financialData, setFinancialData] = useState<any>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -348,16 +348,6 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
           <Layers className="w-4 h-4" /> Барааны Орц & Өртөг Тооцоолол
         </button>
 
-        <button
-          onClick={() => setActiveTab('EXECUTIVE_SUMMARY')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'EXECUTIVE_SUMMARY'
-              ? 'bg-white text-blue-600 shadow-sm'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <PieChart className="w-4 h-4" /> Нийт Санхүүгийн Нэгдсэн Тайлан
-        </button>
 
         <button
           onClick={() => setActiveTab('VALUATION')}
@@ -537,117 +527,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
         </div>
       )}
 
-      {/* TAB 2: CONSOLIDATED EXECUTIVE SUMMARY (EXCEL MATRIX STYLE) */}
-      {activeTab === 'EXECUTIVE_SUMMARY' && (
-        <div className="space-y-6 animate-in fade-in duration-200">
-          {/* Matrix Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-            {/* Section 1: Procurement */}
-            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
-              <div className="bg-yellow-400/90 text-slate-900 font-black text-xs uppercase px-4 py-3 border-b border-yellow-500/30 flex items-center gap-2">
-                <Truck className="w-4 h-4" /> 1. Түүхий эд & Сав баглаа татан авалт
-              </div>
-              <div className="p-4 space-y-3">
-                <div className="flex justify-between items-center text-xs border-b border-slate-100 pb-2">
-                  <span className="text-slate-500 font-semibold">Нийт татан авалтын дүн:</span>
-                  <span className="font-mono font-bold text-slate-900">₮{(summary?.totalProcurementAmount || 0).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500 font-semibold">Бүртгэгдсэн татан авалт:</span>
-                  <span className="font-bold text-blue-600">{procurements.length} удаа</span>
-                </div>
-              </div>
-            </div>
 
-            {/* Section 2: Materials Issued */}
-            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
-              <div className="bg-yellow-400/90 text-slate-900 font-black text-xs uppercase px-4 py-3 border-b border-yellow-500/30 flex items-center gap-2">
-                <Boxes className="w-4 h-4" /> 2. Үйлдвэрт олгосон ТЭМ & Материал
-              </div>
-              <div className="p-4 space-y-3">
-                <div className="flex justify-between items-center text-xs border-b border-slate-100 pb-2">
-                  <span className="text-slate-500 font-semibold">ТЭМ ба Сав баглааны зардал:</span>
-                  <span className="font-mono font-bold text-amber-800">₮{(summary?.totalMaterialsIssuedCost || 0).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500 font-semibold">Үйлдвэрлэлийн парц (Batches):</span>
-                  <span className="font-bold text-blue-600">{productionBatches.length} удаа</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Section 3: Production & Loss */}
-            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
-              <div className="bg-yellow-400/90 text-slate-900 font-black text-xs uppercase px-4 py-3 border-b border-yellow-500/30 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4" /> 3. Зардал & Хорогдол
-              </div>
-              <div className="p-4 space-y-2">
-                <div className="flex justify-between items-center text-xs border-b border-slate-100 pb-1.5">
-                  <span className="text-slate-500 font-semibold">Тогтмол зардал:</span>
-                  <span className="font-mono font-bold text-slate-800">₮{(summary?.totalFixedOverheadCost || 0).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs border-b border-slate-100 pb-1.5">
-                  <span className="text-slate-500 font-semibold">Хувийн (Нормт) хорогдол:</span>
-                  <span className="font-mono font-bold text-slate-700">₮{(summary?.totalNormalScrapLoss || 0).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500 font-semibold">Хувийн бус хорогдол:</span>
-                  <span className="font-mono font-bold text-red-600">₮{(summary?.totalAbnormalScrapLoss || 0).toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Section 4: Revenue & Profit */}
-            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
-              <div className="bg-yellow-400/90 text-slate-900 font-black text-xs uppercase px-4 py-3 border-b border-yellow-500/30 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" /> 4. Борлуулалт & Орлого/Ашиг
-              </div>
-              <div className="p-4 space-y-2">
-                <div className="flex justify-between items-center text-xs border-b border-slate-100 pb-1.5">
-                  <span className="text-slate-500 font-semibold">Хүргэгдсэн орлого:</span>
-                  <span className="font-mono font-bold text-emerald-700">₮{(summary?.totalDeliveredRevenue || 0).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500 font-semibold">Цэвэр Маржин Ашиг:</span>
-                  <span className="font-mono font-extrabold text-purple-700">₮{(summary?.totalDeliveredNetProfit || 0).toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Production Financial Formula Summary Card */}
-          <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-lg border border-slate-800 space-y-4">
-            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
-              <Factory className="w-5 h-5 text-blue-400" /> Нэгдсэн Үйлдвэрлэлийн Өртөг Ба Ашгийн Тооцооллын Томьёо
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-              <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700/50 space-y-1">
-                <div className="text-slate-400 font-bold uppercase text-[10px]">Нийт Үйлдвэрлэлийн Өртөг</div>
-                <div className="text-lg font-mono font-bold text-amber-400">
-                  ₮{(summary?.totalProductionCost || 0).toLocaleString()}
-                </div>
-                <p className="text-[11px] text-slate-400">ТЭМ зардал + Тогтмол зардал + Хорогдол</p>
-              </div>
-
-              <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700/50 space-y-1">
-                <div className="text-slate-400 font-bold uppercase text-[10px]">Нийт Хорогдлын Зарадал</div>
-                <div className="text-lg font-mono font-bold text-red-400">
-                  ₮{(summary?.totalScrapLoss || 0).toLocaleString()}
-                </div>
-                <p className="text-[11px] text-slate-400">Нормт хорогдол + Нормт бус алдагдал</p>
-              </div>
-
-              <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700/50 space-y-1">
-                <div className="text-slate-400 font-bold uppercase text-[10px]">Борлуулалтын Цэвэр Ашиг</div>
-                <div className="text-lg font-mono font-bold text-emerald-400">
-                  ₮{(summary?.totalDeliveredNetProfit || 0).toLocaleString()}
-                </div>
-                <p className="text-[11px] text-slate-400">Амжилттай хүргэгдсэн борлуулалтын ашиг</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* TAB 3: INVENTORY VALUATION BY MATERIAL CATEGORY */}
       {activeTab === 'VALUATION' && (

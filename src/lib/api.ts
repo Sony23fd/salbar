@@ -396,7 +396,7 @@ export const api = {
     return res.json();
   },
 
-  async getFinancialSummary(): Promise<{
+  async getFinancialSummary(startDate?: string, endDate?: string): Promise<{
     inventoryValuation: Record<string, { count: number; totalQuantity: number; totalValue: number }>;
     finishedGoodsAnalysis: any[];
     summary: {
@@ -410,9 +410,14 @@ export const api = {
       totalDeliveredRevenue: number;
       totalDeliveredBaseCost: number;
       totalDeliveredNetProfit: number;
+      totalAdjustmentImpact: number;
     };
   }> {
-    const res = await fetch(`${API_BASE}/financial-summary`, { headers: getHeaders() });
+    let url = `${API_BASE}/financial-summary`;
+    if (startDate && endDate) {
+      url += `?startDate=${startDate}&endDate=${endDate}`;
+    }
+    const res = await fetch(url, { headers: getHeaders() });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   }
