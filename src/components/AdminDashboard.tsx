@@ -145,6 +145,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const recentOrders = [...filteredOrders].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  ).slice(0, 5);
 
   // Status Badge Styling
   const [orderStatuses, setOrderStatuses] = useState<OrderStatusConfig[]>([]);
