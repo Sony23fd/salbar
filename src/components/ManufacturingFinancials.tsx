@@ -24,7 +24,8 @@ import {
   X,
   Calculator,
   Scissors,
-  Home
+  Home,
+  ChevronDown
 } from 'lucide-react';
 
 interface ManufacturingFinancialsProps {
@@ -306,31 +307,64 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
         </div>
 
         {isAdminOrWorker && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => setShowQuickMaterialModal(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition-colors shadow-xs"
-            >
-              <Plus className="w-4 h-4" /> Шинэ ТЭМ / Сав баглаа бүртгэх
-            </button>
-            <button
-              onClick={() => setShowProcurementModal(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-xs"
-            >
-              <Truck className="w-4 h-4" /> ТЭМ & Сав баглаа татан авах
-            </button>
-            <button
-              onClick={() => setShowBomModal(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white transition-colors shadow-xs"
-            >
-              <Settings className="w-4 h-4" /> Орц (BOM) тохируулах
-            </button>
-            <button
-              onClick={() => setShowProductionModal(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-xs"
-            >
-              <Factory className="w-4 h-4" /> Үйлдвэрлэл бүртгэх
-            </button>
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Group 1: Materials & Inventory */}
+            <div className="relative group">
+              <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white transition-colors shadow-xs">
+                <Boxes className="w-4 h-4" /> ТЭМ & Агуулах <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+              </button>
+              <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden transform origin-top-right scale-95 group-hover:scale-100">
+                <div className="p-1">
+                  <button
+                    onClick={() => setShowQuickMaterialModal(true)}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-lg transition-colors text-left"
+                  >
+                    <div className="w-6 h-6 rounded-md bg-amber-100 flex items-center justify-center shrink-0">
+                      <Plus className="w-3.5 h-3.5 text-amber-700" />
+                    </div>
+                    Шинэ ТЭМ / Сав баглаа бүртгэх
+                  </button>
+                  <button
+                    onClick={() => setShowProcurementModal(true)}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-lg transition-colors text-left mt-1"
+                  >
+                    <div className="w-6 h-6 rounded-md bg-emerald-100 flex items-center justify-center shrink-0">
+                      <Truck className="w-3.5 h-3.5 text-emerald-700" />
+                    </div>
+                    ТЭМ & Сав баглаа татан авах
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Group 2: Manufacturing */}
+            <div className="relative group">
+              <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-xs">
+                <Factory className="w-4 h-4" /> Үйлдвэрлэл <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+              </button>
+              <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-xl border border-slate-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden transform origin-top-right scale-95 group-hover:scale-100">
+                <div className="p-1">
+                  <button
+                    onClick={() => setShowBomModal(true)}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-lg transition-colors text-left"
+                  >
+                    <div className="w-6 h-6 rounded-md bg-slate-100 flex items-center justify-center shrink-0">
+                      <Settings className="w-3.5 h-3.5 text-slate-700" />
+                    </div>
+                    Орц (BOM) тохируулах
+                  </button>
+                  <button
+                    onClick={() => setShowProductionModal(true)}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-lg transition-colors text-left mt-1"
+                  >
+                    <div className="w-6 h-6 rounded-md bg-blue-100 flex items-center justify-center shrink-0">
+                      <Factory className="w-3.5 h-3.5 text-blue-700" />
+                    </div>
+                    Үйлдвэрлэл бүртгэх
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
