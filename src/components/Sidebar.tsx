@@ -37,22 +37,50 @@ export const Sidebar: React.FC<SidebarProps> = ({
     ? currentUser.permissions
     : (DEFAULT_ROLE_PERMISSIONS[currentUser.role] || DEFAULT_ROLE_PERMISSIONS.ADMIN);
 
-  const rawNavItems = [
-    { id: 'dashboard', icon: Building2, label: 'Хяналтын самбар', badge: inactiveBranchCount > 0 && currentUser.role === 'ADMIN' ? inactiveBranchCount : null, badgeColor: 'bg-amber-500' },
-    { id: 'tasks', icon: ClipboardList, label: 'Ажлын төлөвлөгөө', iconColor: 'text-indigo-500' },
-    { id: 'inventory', icon: Package, label: 'Агуулах ба Бараа' },
-    { id: 'materials', icon: Boxes, label: 'ТЭМ & Сав баглаа', iconColor: 'text-purple-500' },
-    { id: 'manufacturing', icon: FileSpreadsheet, label: 'Үйлдвэрлэл & Санхүү', iconColor: 'text-amber-500' },
-    { id: 'orders', icon: ShoppingCart, label: 'Салбарын захиалга' },
-    { id: 'deliveries', icon: Truck, label: 'Хүргэлт & Түгээлт' },
-    { id: 'branches', icon: ShieldAlert, label: 'Салбарын идэвх' },
-    { id: 'categories', icon: Package, label: 'Ангилал', iconColor: 'text-orange-500' },
-    { id: 'reports', icon: FileText, label: 'Хөдөлгөөн & Тайлан', iconColor: 'text-emerald-500' },
-    { id: 'users', icon: ShieldAlert, label: 'Ажилчдын удирдлага', iconColor: 'text-indigo-500' },
-    { id: 'audit', icon: History, label: 'Аудит лог' },
+  const menuGroups = [
+    {
+      title: 'ҮНДСЭН',
+      items: [
+        { id: 'dashboard', icon: Building2, label: 'Хяналтын самбар', badge: inactiveBranchCount > 0 && currentUser.role === 'ADMIN' ? inactiveBranchCount : null, badgeColor: 'bg-amber-500' },
+        { id: 'tasks', icon: ClipboardList, label: 'Ажлын төлөвлөгөө', iconColor: 'text-indigo-500' },
+      ]
+    },
+    {
+      title: 'АГУУЛАХ & БҮРТГЭЛ',
+      items: [
+        { id: 'inventory', icon: Package, label: 'Агуулах ба Бараа' },
+        { id: 'materials', icon: Boxes, label: 'ТЭМ & Сав баглаа', iconColor: 'text-purple-500' },
+        { id: 'categories', icon: Package, label: 'Ангилал', iconColor: 'text-orange-500' },
+      ]
+    },
+    {
+      title: 'БОРЛУУЛАЛТ & ТҮГЭЭЛТ',
+      items: [
+        { id: 'orders', icon: ShoppingCart, label: 'Салбарын захиалга' },
+        { id: 'deliveries', icon: Truck, label: 'Хүргэлт & Түгээлт' },
+        { id: 'branches', icon: ShieldAlert, label: 'Салбарын идэвх' },
+      ]
+    },
+    {
+      title: 'ҮЙЛДВЭРЛЭЛ & ТАЙЛАН',
+      items: [
+        { id: 'manufacturing', icon: FileSpreadsheet, label: 'Үйлдвэрлэл & Санхүү', iconColor: 'text-amber-500' },
+        { id: 'reports', icon: FileText, label: 'Хөдөлгөөн & Тайлан', iconColor: 'text-emerald-500' },
+      ]
+    },
+    {
+      title: 'СИСТЕМ',
+      items: [
+        { id: 'users', icon: ShieldAlert, label: 'Ажилчдын удирдлага', iconColor: 'text-indigo-500' },
+        { id: 'audit', icon: History, label: 'Аудит лог' },
+      ]
+    }
   ];
 
-  const navItems = rawNavItems.filter(item => currentUser.role === 'ADMIN' || userPerms.includes(item.id));
+  const filteredGroups = menuGroups.map(group => ({
+    ...group,
+    items: group.items.filter(item => currentUser.role === 'ADMIN' || userPerms.includes(item.id))
+  })).filter(group => group.items.length > 0);
 
   return (
     <>
@@ -94,33 +122,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Navigation Links */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1 scrollbar-thin scrollbar-thumb-slate-700">
-          {navItems.map((item) => {
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleTabClick(item.id)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all group ${
-                  isActive 
-                    ? 'bg-blue-600/10 text-blue-400' 
-                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <item.icon className={`w-4 h-4 transition-transform group-hover:scale-110 ${
-                    isActive ? 'text-blue-500' : (item.iconColor || 'text-slate-500 group-hover:text-slate-400')
-                  }`} />
-                  {item.label}
-                </div>
-                {item.badge !== null && item.badge !== undefined && (
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold text-white shadow-sm ${item.badgeColor} animate-pulse`}>
-                    {item.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
+          {filteredGroups.map((group, groupIdx) => (
+            <div key={groupIdx} className="space-y-1">
+              <div className="px-3 mb-2 text-[10px] font-bold text-slate-500 tracking-wider uppercase">
+                {group.title}
+              </div>
+              {group.items.map((item) => {
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleTabClick(item.id)}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all group ${
+                      isActive 
+                        ? 'bg-blue-600/10 text-blue-400' 
+                        : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <item.icon className={`w-4 h-4 transition-transform group-hover:scale-110 ${
+                        isActive ? 'text-blue-500' : (item.iconColor || 'text-slate-500 group-hover:text-slate-400')
+                      }`} />
+                      {item.label}
+                    </div>
+                    {item.badge !== null && item.badge !== undefined && (
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold text-white shadow-sm ${item.badgeColor} animate-pulse`}>
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
       </aside>
