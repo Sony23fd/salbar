@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import { Order, Branch, Product, User, OrderStatus, OrderStatusConfig } from '../types/wms';
 import { createOrder } from '../actions/order';
 import { db } from '../lib/db';
@@ -41,8 +42,8 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
   ]);
   const [notes, setNotes] = useState('');
 
-  const [formError, setFormError] = useState<string | null>(null);
-  const [formSuccess, setFormSuccess] = useState<string | null>(null);
+  
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Admin Status Modal state
@@ -111,8 +112,8 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
 
   const handleCreateOrderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormError(null);
-    setFormSuccess(null);
+    ;
+    ;
     setIsSubmitting(true);
 
     try {
@@ -127,19 +128,19 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
       );
 
       if (!response.success) {
-        setFormError(response.message);
+        toast.error(response.message);
       } else {
-        setFormSuccess('Захиалга амжилттай үүсэгдлээ!');
+        toast.success('Захиалга амжилттай үүсэгдлээ!');
         setTimeout(() => {
           setShowCreateModal(false);
           setOrderItems([{ productId: products[0]?.id || '', quantity: 1 }]);
           setNotes('');
-          setFormSuccess(null);
+          ;
           onRefresh();
         }, 1200);
       }
     } catch (err: any) {
-      setFormError(err.message || 'Захиалга үүсгэхэд алдаа гарлаа.');
+      toast.error(err.message || 'Захиалга үүсгэхэд алдаа гарлаа.');
     } finally {
       setIsSubmitting(false);
     }
@@ -151,7 +152,7 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
       onRefresh();
     } catch (e) {
       console.error(e);
-      alert('Алдаа гарлаа');
+      toast.error('Алдаа гарлаа');
     }
   };
 
@@ -164,7 +165,7 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
       setStatusModalOrder(null);
       onRefresh();
     } catch (err: any) {
-      alert(err.message || 'Төлөв өөрчлөх үед алдаа гарлаа.');
+      toast.error(err.message || 'Төлөв өөрчлөх үед алдаа гарлаа.');
     } finally {
       setIsAdminSubmitting(false);
     }
@@ -520,19 +521,9 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
             </div>
 
             <form onSubmit={handleCreateOrderSubmit} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
-              {formSuccess && (
-                <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  {formSuccess}
-                </div>
-              )}
+              
 
-              {formError && (
-                <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium flex items-center gap-2">
-                  <ShieldAlert className="w-4 h-4 text-red-600 shrink-0" />
-                  {formError}
-                </div>
-              )}
+              
 
               {/* Branch Selector */}
               <div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { api } from '../lib/api';
 import { DeboningLog, User } from '../types/wms';
 import { Scissors, Plus, Scale, TrendingDown, CheckCircle2 } from 'lucide-react';
@@ -40,7 +41,7 @@ export const DeboningManager: React.FC<DeboningManagerProps> = ({ currentUser })
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!grossWeight || Number(grossWeight) <= 0) {
-      alert('Бохир жинг зөв оруулна уу.');
+      toast.error('Бохир жинг зөв оруулна уу.');
       return;
     }
 
@@ -53,14 +54,14 @@ export const DeboningManager: React.FC<DeboningManagerProps> = ({ currentUser })
         yieldPercentage,
         notes
       });
-      alert('Шулааны боловсруулалт амжилттай бүртгэгдлээ.');
+      toast.success('Шулааны боловсруулалт амжилттай бүртгэгдлээ.');
       setShowModal(false);
       setGrossWeight(150);
       setBoneWasteWeight(33);
       setNotes('');
       loadLogs();
     } catch (err: any) {
-      alert(err.message || 'Алдаа гарлаа');
+      toast.error(err.message || 'Алдаа гарлаа');
     }
   };
 

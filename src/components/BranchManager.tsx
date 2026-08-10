@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import toast from 'react-hot-toast';
 import { Branch, InactiveBranchAlert, User, BranchType, Order, OrderStatus } from '../types/wms';
 import { db } from '../lib/db';
 import { Building2, Clock, MapPin, Phone, Mail, AlertTriangle, CheckCircle2, ShoppingCart, Plus, X, Building, Users, History, Package, Search, Filter, ChevronRight, Edit2, Trash2 } from 'lucide-react';
@@ -89,9 +90,9 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
       // Update selectedBranch locally to reflect changes in drawer without closing it
       const updatedBranch = branches.find(b => b.id === branchId);
       if(updatedBranch) setSelectedBranch(updatedBranch); 
-      alert('Амжилттай хасагдлаа');
+      toast.success('Амжилттай хасагдлаа');
     } catch (err: any) {
-      alert(err.message || 'Алдаа гарлаа');
+      toast.error(err.message || 'Алдаа гарлаа');
     }
   };
 
@@ -110,7 +111,7 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
       onRefresh();
       closeModal();
     } catch (err: any) {
-      alert(err.message || 'Алдаа гарлаа');
+      toast.error(err.message || 'Алдаа гарлаа');
     } finally {
       setIsSubmitting(false);
     }
@@ -123,7 +124,7 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
       onRefresh();
       if(selectedBranch?.id === id) setSelectedBranch(null);
     } catch (err: any) {
-      alert(err.message || 'Алдаа гарлаа');
+      toast.error(err.message || 'Алдаа гарлаа');
     }
   };
 
@@ -135,10 +136,10 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
         priority: 'HIGH',
         branchId: branch.id,
       });
-      alert(`${branch.name} салбартай холбогдох даалгавар үүсгэлээ.`);
+      toast.success(`${branch.name} салбартай холбогдох даалгавар үүсгэлээ.`);
     } catch (err) {
       console.error(err);
-      alert('Даалгавар үүсгэхэд алдаа гарлаа');
+      toast.success('Даалгавар үүсгэхэд алдаа гарлаа');
     }
   };
 

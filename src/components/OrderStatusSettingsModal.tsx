@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { X, Plus, GripVertical, Trash2, Save, Settings } from 'lucide-react';
 import { OrderStatusConfig } from '../types/wms';
 import { api } from '../lib/api';
@@ -62,7 +63,7 @@ export const OrderStatusSettingsModal: React.FC<OrderStatusSettingsModalProps> =
       await loadStatuses();
       onRefresh();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -74,7 +75,7 @@ export const OrderStatusSettingsModal: React.FC<OrderStatusSettingsModalProps> =
       await loadStatuses();
       onRefresh();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 

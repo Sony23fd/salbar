@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import toast from 'react-hot-toast';
 import { Product, MaterialType, User } from '../types/wms';
 import { api } from '../lib/api';
 
@@ -105,7 +106,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
         unit: matUnit || 'ш',
         isActive: true
       });
-      alert(`Шинэ материал '${matName}' амжилттай бүртгэгдлээ.`);
+      toast.success(`Шинэ материал '${matName}' амжилттай бүртгэгдлээ.`);
       setShowQuickMaterialModal(false);
       setMatName('');
       setMatSku('');
@@ -113,7 +114,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
       loadAllData();
       if (onRefreshProducts) onRefreshProducts();
     } catch (err: any) {
-      alert(err.message || 'Алдаа гарлаа');
+      toast.error(err.message || 'Алдаа гарлаа');
     }
   };
 
@@ -201,7 +202,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
   const handleSaveBOM = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFinishedProduct || bomItems.length === 0) {
-      alert('Бэлэн бүтээгдэхүүн болон доод тал нь 1 орц сонгоно уу.');
+      toast.error('Бэлэн бүтээгдэхүүн болон доод тал нь 1 орц сонгоно уу.');
       return;
     }
     try {
@@ -215,11 +216,11 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
         instructions: bomInstructions,
         steps: bomSteps
       });
-      alert('Бүтээгдэхүүний Орц (BOM) амжилттай хадгалагдаж, нэгж өртөг шинэчлэгдлээ.');
+      toast.success('Бүтээгдэхүүний Орц (BOM) амжилттай хадгалагдаж, нэгж өртөг шинэчлэгдлээ.');
       setShowBomModal(false);
       loadAllData();
     } catch (err: any) {
-      alert(err.message || 'Алдаа гарлаа');
+      toast.error(err.message || 'Алдаа гарлаа');
     }
   };
 
@@ -227,7 +228,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
   const handleSaveProcurement = async (e: React.FormEvent) => {
     e.preventDefault();
     if (procItems.length === 0) {
-      alert('Татан авах материал сонгоно уу.');
+      toast.error('Татан авах материал сонгоно уу.');
       return;
     }
     try {
@@ -236,7 +237,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
         notes: procNotes,
         items: procItems
       });
-      alert('Түүхий эд, Сав баглаа материалын татан авалт амжилттай бүртгэгдэж, агуулахын үлдэгдэл болон нэгж өртөг шинэчлэгдлээ.');
+      toast.success('Түүхий эд, Сав баглаа материалын татан авалт амжилттай бүртгэгдэж, агуулахын үлдэгдэл болон нэгж өртөг шинэчлэгдлээ.');
       setShowProcurementModal(false);
       setProcSupplier('');
       setProcNotes('');
@@ -244,7 +245,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
       loadAllData();
       if (onRefreshProducts) onRefreshProducts();
     } catch (err: any) {
-      alert(err.message || 'Алдаа гарлаа');
+      toast.error(err.message || 'Алдаа гарлаа');
     }
   };
 
@@ -252,7 +253,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
   const handleSaveProductionBatch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!prodFinishedProductId || prodQuantity <= 0) {
-      alert('Үйлдвэрлэх бэлэн бүтээгдэхүүн болон хэмжээг оруулна уу.');
+      toast.success('Үйлдвэрлэх бэлэн бүтээгдэхүүн болон хэмжээг оруулна уу.');
       return;
     }
     try {
@@ -266,7 +267,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
         checklistStatus: prodChecklist,
         scrapAnalysisAlert: prodScrapAlert
       });
-      alert('Үйлдвэрлэлийн бүртгэл амжилттай хийгдэж, орцын ТЭМ/Сав баглаа хасагдан, нэгж бодит өртөг бодогдон агуулахад хүлээн авагдлаа.');
+      toast.success('Үйлдвэрлэлийн бүртгэл амжилттай хийгдэж, орцын ТЭМ/Сав баглаа хасагдан, нэгж бодит өртөг бодогдон агуулахад хүлээн авагдлаа.');
       setShowProductionModal(false);
       setProdFinishedProductId('');
       setProdQuantity(100);
@@ -277,7 +278,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
       loadAllData();
       if (onRefreshProducts) onRefreshProducts();
     } catch (err: any) {
-      alert(err.message || 'Алдаа гарлаа');
+      toast.error(err.message || 'Алдаа гарлаа');
     }
   };
 

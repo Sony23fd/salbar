@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { api } from '../lib/api';
 import { LivestockLedger, User } from '../types/wms';
 import { ShieldAlert, Plus, Calendar, Home, ArrowDownLeft, ArrowUpRight, Skull, ShoppingBag, RotateCcw } from 'lucide-react';
@@ -59,7 +60,7 @@ export const LivestockManager: React.FC<LivestockManagerProps> = ({ currentUser 
         endingCount: calculatedEnding,
         notes
       });
-      alert('Малын гүйлгээний тооцоо амжилттай бүртгэгдлээ.');
+      toast.success('Малын гүйлгээний тооцоо амжилттай бүртгэгдлээ.');
       setShowModal(false);
       setReceivedCount(0);
       setSlaughteredCount(0);
@@ -70,7 +71,7 @@ export const LivestockManager: React.FC<LivestockManagerProps> = ({ currentUser 
       setNotes('');
       loadLedgers();
     } catch (err: any) {
-      alert(err.message || 'Алдаа гарлаа');
+      toast.error(err.message || 'Алдаа гарлаа');
     }
   };
 

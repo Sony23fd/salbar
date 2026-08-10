@@ -4,6 +4,7 @@ import { registerProduct, replenishStock } from '../actions/inventory';
 import { db } from '../lib/db';
 import { api } from '../lib/api';
 import { Package, Search, Plus, RefreshCw, X, ShieldAlert, CheckCircle2, AlertTriangle, ArrowUpRight, ArrowDownRight, Hash, Tag, FileText, Banknote, History, ExternalLink, Pencil, AlertCircle, ClipboardList, Layers } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface InventoryManagerProps {
   products: Product[];
@@ -46,9 +47,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
   const [replenishNotes, setReplenishNotes] = useState('');
   const [isAdjustment, setIsAdjustment] = useState(false);
 
-  const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
-  const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Filter products
@@ -65,9 +64,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
 
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormError(null);
     setFieldErrors({});
-    setFormSuccess(null);
     setIsSubmitting(true);
 
     try {
@@ -84,8 +81,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
         isActive: true
       });
 
-      setFormSuccess('Шинэ бараа / материал амжилттай бүртгэгдлээ!');
-      setTimeout(() => {
+        toast.success('Шинэ бараа / материал амжилттай бүртгэгдлээ!');
         setShowAddModal(false);
         setSku('');
         setName('');
@@ -96,11 +92,9 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
         setCategoryId('');
         setMaterialType('FINISHED_GOOD');
         setUnit('ш');
-        setFormSuccess(null);
         onRefresh();
-      }, 1200);
     } catch (err: any) {
-      setFormError(err.message || 'Алдаа гарлаа.');
+      toast.error(err.message || 'Алдаа гарлаа.');
     } finally {
       setIsSubmitting(false);
     }
@@ -116,8 +110,6 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
     setMaterialType((prod.materialType as MaterialType) || 'FINISHED_GOOD');
     setUnit(prod.unit || 'ш');
     setEditWarning(null);
-    setFormError(null);
-    setFormSuccess(null);
   };
 
   const handleUpdateProduct = async (e: React.FormEvent) => {
@@ -137,7 +129,6 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
       }
     }
 
-    setFormError(null);
     setIsSubmitting(true);
     try {
       await api.updateProduct(editingProduct.id, {
@@ -149,15 +140,12 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
         materialType: materialType,
         unit: unit || 'ш'
       });
-      setFormSuccess('Бараа / материалын мэдээлэл шинэчлэгдлээ!');
-      setTimeout(() => {
-        setEditingProduct(null);
-        setFormSuccess(null);
-        setEditWarning(null);
-        onRefresh();
-      }, 1200);
+      toast.success('Бараа / материалын мэдээлэл шинэчлэгдлээ!');
+      setEditingProduct(null);
+      setEditWarning(null);
+      onRefresh();
     } catch (err: any) {
-      setFormError(err.message || 'Алдаа гарлаа.');
+      toast.error(err.message || 'Алдаа гарлаа.');
     } finally {
       setIsSubmitting(false);
     }
@@ -167,7 +155,6 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
     e.preventDefault();
     if (!replenishTarget) return;
 
-    setFormError(null);
     setIsSubmitting(true);
 
     try {
@@ -183,20 +170,17 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
       );
 
       if (!response.success) {
-        setFormError(response.message);
+        toast.error(response.message);
       } else {
-        setFormSuccess(`Барааны нөөц +${replenishQty} ширхэгээр нэмэгдлээ!`);
-        setTimeout(() => {
-          setReplenishTarget(null);
-          setReplenishQty(10);
-          setReplenishNotes('');
-          setIsAdjustment(false);
-          setFormSuccess(null);
-          onRefresh();
-        }, 1200);
+        toast.success(`Барааны нөөц +${replenishQty} ширхэгээр нэмэгдлээ!`);
+        setReplenishTarget(null);
+        setReplenishQty(10);
+        setReplenishNotes('');
+        setIsAdjustment(false);
+        onRefresh();
       }
     } catch (err: any) {
-      setFormError(err.message || 'Алдаа гарлаа.');
+      toast.error(err.message || 'Алдаа гарлаа.');
     } finally {
       setIsSubmitting(false);
     }
@@ -211,11 +195,9 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
         priority: 'HIGH',
         productId: product.id,
       });
-      setFormSuccess(`${product.sku} бараанд татан авалтын даалгавар үүсгэлээ.`);
-      setTimeout(() => setFormSuccess(null), 3000);
+      toast.success(`${product.sku} бараанд татан авалтын даалгавар үүсгэлээ.`);
     } catch (err: any) {
-      setFormError(err.message || 'Даалгавар үүсгэхэд алдаа гарлаа.');
-      setTimeout(() => setFormError(null), 3000);
+      toast.error(err.message || 'Даалгавар үүсгэхэд алдаа гарлаа.');
     } finally {
       setIsSubmitting(false);
     }
@@ -427,19 +409,9 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
             </div>
 
             <form onSubmit={handleCreateProduct} className="p-6 space-y-4">
-              {formSuccess && (
-                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  {formSuccess}
-                </div>
-              )}
+              
 
-              {formError && (
-                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium flex items-center gap-2">
-                  <ShieldAlert className="w-4 h-4 text-red-600 shrink-0" />
-                  {formError}
-                </div>
-              )}
+              
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -607,19 +579,9 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
             </div>
 
             <form onSubmit={handleReplenishStock} className="p-6 space-y-4">
-              {formSuccess && (
-                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  {formSuccess}
-                </div>
-              )}
+              
 
-              {formError && (
-                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium flex items-center gap-2">
-                  <ShieldAlert className="w-4 h-4 text-red-600 shrink-0" />
-                  {formError}
-                </div>
-              )}
+              
 
               <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1">
                 <div className="text-xs text-slate-500 font-medium">Барааны нэр</div>
@@ -702,16 +664,8 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
             </div>
             
             <form onSubmit={handleUpdateProduct} className="p-6 space-y-5">
-              {formError && (
-                <div className="bg-red-50 text-red-700 p-4 rounded-xl text-xs font-semibold flex items-center gap-2 border border-red-200">
-                  <ShieldAlert className="w-4 h-4" /> {formError}
-                </div>
-              )}
-              {formSuccess && (
-                <div className="bg-emerald-50 text-emerald-700 p-4 rounded-xl text-xs font-semibold flex items-center gap-2 border border-emerald-200">
-                  <CheckCircle2 className="w-4 h-4" /> {formSuccess}
-                </div>
-              )}
+              
+              
               {editWarning && (
                 <div className="bg-amber-50 text-amber-800 p-4 rounded-xl text-xs font-semibold flex items-start gap-2 border border-amber-200">
                   <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />

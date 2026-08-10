@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Toaster } from 'react-hot-toast';
 import { api } from './lib/api';
 import { User, Branch, Product, Order, InactiveBranchAlert } from './types/wms';
 import { Sidebar } from './components/Sidebar';
@@ -172,6 +173,13 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-600 selection:text-white overflow-hidden">
+      <Toaster 
+        position="top-right" 
+        toastOptions={{
+          className: 'text-sm font-sans font-medium',
+          duration: 3000,
+        }} 
+      />
       {/* Sidebar Navigation */}
       <Sidebar
         currentUser={currentUser}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { User, Role } from '../types/wms';
 import { api } from '../lib/api';
 import { Shield, Plus, Edit2, Trash2, X, Check, Search, AlertCircle, Key, RefreshCw } from 'lucide-react';
@@ -127,11 +128,11 @@ export const UserManager: React.FC<UserManagerProps> = ({ currentUser }) => {
       await api.updateUser(permissionTargetUser.id, {
         permissions: selectedPermissions
       });
-      alert(`'${permissionTargetUser.name}' ажилтны эрх амжилттай шинэчлэгдлээ!`);
+      toast.success(`'${permissionTargetUser.name}' ажилтны эрх амжилттай шинэчлэгдлээ!`);
       setPermissionTargetUser(null);
       loadUsers();
     } catch (err: any) {
-      alert(err.message || 'Эрх хадгалахад алдаа гарлаа.');
+      toast.error(err.message || 'Эрх хадгалахад алдаа гарлаа.');
     } finally {
       setIsSavingPermissions(false);
     }
@@ -170,7 +171,7 @@ export const UserManager: React.FC<UserManagerProps> = ({ currentUser }) => {
         await api.deactivateUser(id);
         loadUsers();
       } catch (err: any) {
-        alert(err.message);
+        toast.error(err.message);
       }
     }
   };

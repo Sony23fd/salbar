@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { Category, User } from '../types/wms';
 import { db } from '../lib/db';
 
@@ -39,7 +40,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ activeUser }) 
       setShowAddForm(false);
       fetchCategories();
     } catch (e: any) {
-      alert(e.message || 'Error adding category');
+      toast.error(e.message || 'Error adding category');
     }
   };
 
@@ -49,7 +50,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ activeUser }) 
       await db.deactivateCategory(id);
       fetchCategories();
     } catch (e: any) {
-      alert(e.message || 'Error deactivating category');
+      toast.error(e.message || 'Error deactivating category');
     }
   };
 

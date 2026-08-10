@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import toast from 'react-hot-toast';
 import { Product, User, MaterialType } from '../types/wms';
 import { api } from '../lib/api';
 import {
@@ -48,9 +49,7 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
   const [replenishQty, setReplenishQty] = useState<number | ''>(50);
   const [replenishCostPrice, setReplenishCostPrice] = useState<number | ''>('');
 
-  const [formError, setFormError] = useState<string | null>(null);
-  const [formSuccess, setFormSuccess] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+      const [isSubmitting, setIsSubmitting] = useState(false);
 
   const canEdit = currentUser.role === 'ADMIN' || currentUser.role === 'WAREHOUSE_WORKER' || currentUser.role === 'FINANCE';
 
@@ -86,8 +85,8 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
   // Handle Create Material
   const handleCreateMaterial = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormError(null);
-    setFormSuccess(null);
+    ;
+    ;
     setIsSubmitting(true);
 
     try {
@@ -105,7 +104,7 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
         isActive: true
       });
 
-      setFormSuccess('Шинэ ТЭМ / Сав баглаа материал амжилттай бүртгэгдлээ!');
+      toast.success('Шинэ ТЭМ / Сав баглаа материал амжилттай бүртгэгдлээ!');
       setTimeout(() => {
         setShowAddModal(false);
         setName('');
@@ -114,11 +113,11 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
         setUnitPrice(0);
         setStockQuantity(0);
         setMinStockLevel(10);
-        setFormSuccess(null);
+        ;
         onRefresh();
       }, 1000);
     } catch (err: any) {
-      setFormError(err.message || 'Материал бүртгэхэд алдаа гарлаа.');
+      toast.error(err.message || 'Материал бүртгэхэд алдаа гарлаа.');
     } finally {
       setIsSubmitting(false);
     }
@@ -129,7 +128,7 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
     e.preventDefault();
     if (!replenishTarget) return;
 
-    setFormError(null);
+    ;
     setIsSubmitting(true);
 
     try {
@@ -143,16 +142,16 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
         unitPrice: newPrice
       });
 
-      setFormSuccess('Материалын агуулахын нөөц амжилттай нэмэгдлээ!');
+      toast.success('Материалын агуулахын нөөц амжилттай нэмэгдлээ!');
       setTimeout(() => {
         setReplenishTarget(null);
         setReplenishQty(50);
         setReplenishCostPrice('');
-        setFormSuccess(null);
+        ;
         onRefresh();
       }, 1000);
     } catch (err: any) {
-      setFormError(err.message || 'Алдаа гарлаа.');
+      toast.error(err.message || 'Алдаа гарлаа.');
     } finally {
       setIsSubmitting(false);
     }
@@ -379,16 +378,8 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
             </div>
 
             <form onSubmit={handleCreateMaterial} className="space-y-4">
-              {formSuccess && (
-                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" /> {formSuccess}
-                </div>
-              )}
-              {formError && (
-                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium">
-                  {formError}
-                </div>
-              )}
+              
+              
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Материалын Төрөл *</label>
@@ -503,11 +494,7 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
             </div>
 
             <form onSubmit={handleReplenishMaterial} className="space-y-4">
-              {formSuccess && (
-                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
-                  {formSuccess}
-                </div>
-              )}
+              
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Нэмж авсан тоо хэмжээ ({replenishTarget.unit || 'ш'}) *</label>
