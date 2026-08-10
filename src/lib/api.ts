@@ -107,8 +107,8 @@ export const api = {
     return res.json();
   },
 
-  async getCategories(): Promise<Category[]> {
-    const res = await fetch(`${API_BASE}/categories`, { headers: getHeaders() });
+  async getCategories(includeInactive: boolean = false): Promise<Category[]> {
+    const res = await fetch(`${API_BASE}/categories?includeInactive=${includeInactive}`, { headers: getHeaders() });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },
@@ -142,8 +142,17 @@ export const api = {
     return res.json();
   },
 
-  async getProducts(): Promise<Product[]> {
-    const res = await fetch(`${API_BASE}/products`, { headers: getHeaders() });
+  async reactivateCategory(id: string): Promise<Category> {
+    const res = await fetch(`${API_BASE}/categories/${id}/reactivate`, {
+      method: 'PUT',
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async getProducts(includeInactive: boolean = false): Promise<Product[]> {
+    const res = await fetch(`${API_BASE}/products?includeInactive=${includeInactive}`, { headers: getHeaders() });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },
@@ -170,6 +179,15 @@ export const api = {
 
   async deactivateProduct(id: string): Promise<Product> {
     const res = await fetch(`${API_BASE}/products/${id}/deactivate`, {
+      method: 'PUT',
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async reactivateProduct(id: string): Promise<Product> {
+    const res = await fetch(`${API_BASE}/products/${id}/reactivate`, {
       method: 'PUT',
       headers: getHeaders(),
     });

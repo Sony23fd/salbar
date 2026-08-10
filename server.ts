@@ -322,8 +322,9 @@ app.put('/api/branches/:id/deactivate', authenticate(['ADMIN']), async (req, res
 
 // Categories
 app.get('/api/categories', authenticate(), async (req, res) => {
+  const includeInactive = req.query.includeInactive === 'true';
   const categories = await prisma.category.findMany({
-    where: { isActive: true },
+    where: includeInactive ? undefined : { isActive: true },
     orderBy: { createdAt: 'desc' }
   });
   res.json(categories);
@@ -370,10 +371,23 @@ app.put('/api/categories/:id/deactivate', authenticate(['ADMIN']), async (req, r
   }
 });
 
+app.put('/api/categories/:id/reactivate', authenticate(['ADMIN']), async (req, res) => {
+  try {
+    const updated = await prisma.category.update({
+      where: { id: req.params.id },
+      data: { isActive: true }
+    });
+    res.json(updated);
+  } catch (err) {
+    res.status(400).json({ error: String(err) });
+  }
+});
+
 // Products
 app.get('/api/products', authenticate(), async (req, res) => {
+  const includeInactive = req.query.includeInactive === 'true';
   const products = await prisma.product.findMany({
-    where: { isActive: true },
+    where: includeInactive ? undefined : { isActive: true },
     include: { category: true },
     orderBy: { createdAt: 'desc' }
   });
@@ -432,6 +446,18 @@ app.put('/api/products/:id/deactivate', authenticate(['ADMIN']), async (req, res
     const updated = await prisma.product.update({
       where: { id: req.params.id },
       data: { isActive: false }
+    });
+    res.json(updated);
+  } catch (err) {
+    res.status(400).json({ error: String(err) });
+  }
+});
+
+app.put('/api/products/:id/reactivate', authenticate(['ADMIN']), async (req, res) => {
+  try {
+    const updated = await prisma.product.update({
+      where: { id: req.params.id },
+      data: { isActive: true }
     });
     res.json(updated);
   } catch (err) {

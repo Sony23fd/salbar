@@ -67,9 +67,10 @@ export default function App() {
     try {
       const loadedUsers = await api.getUsers();
       const loadedBranches = await api.getBranches();
-      const loadedProducts = await api.getProducts();
+      const loadedProducts = await api.getProducts(true);
       const loadedOrders = await api.getOrders();
       const loadedInactive = await api.getInactiveBranches(7);
+      await api.getCategories(true);
 
       setUsers(loadedUsers);
       setBranches(loadedBranches);

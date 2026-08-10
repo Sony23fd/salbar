@@ -14,7 +14,9 @@ import {
   Layers,
   Truck,
   DollarSign,
-  Pencil
+  Pencil,
+  Trash2,
+  RefreshCcw
 } from 'lucide-react';
 
 interface MaterialManagerProps {
@@ -34,6 +36,8 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
   // Modals state
   const [showAddModal, setShowAddModal] = useState(false);
   const [replenishTarget, setReplenishTarget] = useState<Product | null>(null);
+  const [editingMaterial, setEditingMaterial] = useState<Product | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
 
   // Form states for New Material
   const [name, setName] = useState('');
@@ -78,9 +82,10 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.sku.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesType = typeFilter === 'ALL' || p.materialType === typeFilter;
-      return isMaterial && matchesSearch && matchesType;
+      const matchesActive = showInactive ? !p.isActive : p.isActive;
+      return isMaterial && matchesSearch && matchesType && matchesActive;
     });
-  }, [products, searchQuery, typeFilter]);
+  }, [products, searchQuery, typeFilter, showInactive]);
 
   // Handle Create Material
   const handleCreateMaterial = async (e: React.FormEvent) => {
@@ -120,6 +125,63 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
       toast.error(err.message || 'Материал бүртгэхэд алдаа гарлаа.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleEditClick = (mat: Product) => {
+    setEditingMaterial(mat);
+    setName(mat.name);
+    setSku(mat.sku);
+    setDescription(mat.description || '');
+    setMaterialType(mat.materialType as MaterialType);
+    setUnit(mat.unit || 'кг');
+    setUnitPrice(mat.unitPrice || 0);
+    setStockQuantity(mat.stockQuantity || 0);
+    setMinStockLevel(mat.minStockLevel || 10);
+  };
+
+  const handleUpdateMaterial = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMaterial) return;
+    setIsSubmitting(true);
+    try {
+      await api.updateProduct(editingMaterial.id, {
+        name,
+        description,
+        materialType,
+        unit,
+        unitPrice: Number(unitPrice),
+        costPrice: Number(unitPrice),
+        minStockLevel: Number(minStockLevel)
+      });
+      toast.success('Материалын мэдээлэл шинэчлэгдлээ!');
+      setEditingMaterial(null);
+      onRefresh();
+    } catch (err: any) {
+      toast.error(err.message || 'Алдаа гарлаа.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeactivate = async (id: string) => {
+    if (!confirm('Энэ материалыг устгах уу? (Идэвхгүй болгох)')) return;
+    try {
+      await api.deactivateProduct(id);
+      toast.success('Материал устгагдлаа');
+      onRefresh();
+    } catch (err: any) {
+      toast.error(err.message || 'Алдаа гарлаа');
+    }
+  };
+
+  const handleReactivate = async (id: string) => {
+    try {
+      await api.reactivateProduct(id);
+      toast.success('Материал сэргээгдлээ');
+      onRefresh();
+    } catch (err: any) {
+      toast.error(err.message || 'Алдаа гарлаа');
     }
   };
 
@@ -270,6 +332,19 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
           </button>
         </div>
 
+        {/* Inactive Filter Toggle */}
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
+              className="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500"
+            />
+            Устгасан харуулах
+          </label>
+        </div>
+
         {/* Search */}
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -328,7 +403,11 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
                       ₮{totalVal.toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      {isLow ? (
+                      {!m.isActive ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                          Идэвхгүй
+                        </span>
+                      ) : isLow ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
                           <AlertTriangle className="w-3 h-3" /> Нөөц бага
                         </span>
@@ -340,12 +419,40 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
                     </td>
                     {canEdit && (
                       <td className="px-4 py-3 text-center">
-                        <button
-                          onClick={() => setReplenishTarget(m)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition-colors"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5" /> Татан авах
-                        </button>
+                        <div className="flex items-center justify-center gap-1">
+                          {m.isActive ? (
+                            <>
+                              <button
+                                onClick={() => setReplenishTarget(m)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition-colors"
+                                title="Татан авах"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleEditClick(m)}
+                                className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors"
+                                title="Засах"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeactivate(m.id)}
+                                className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+                                title="Устгах"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => handleReactivate(m.id)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors"
+                            >
+                              <RefreshCcw className="w-3.5 h-3.5" /> Сэргээх
+                            </button>
+                          )}
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -532,6 +639,99 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
                   className="px-5 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
                 >
                   Орлогодон Хадгалах
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* MODAL 3: EDIT MATERIAL */}
+      {editingMaterial && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Pencil className="w-5 h-5 text-blue-600" /> ТЭМ / Сав баглаа засах
+              </h3>
+              <button onClick={() => setEditingMaterial(null)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateMaterial} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Материалын нэр *</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Төрөл *</label>
+                  <select
+                    value={materialType}
+                    onChange={(e) => setMaterialType(e.target.value as MaterialType)}
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold"
+                  >
+                    <option value="RAW_MATERIAL">Түүхий эд</option>
+                    <option value="PACKAGING">Сав баглаа</option>
+                    <option value="AUXILIARY">Туслах материал</option>
+                    <option value="SUPPLY">Хангамж</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Хэмжих нэгж *</label>
+                  <input
+                    type="text"
+                    value={unit}
+                    onChange={(e) => setUnit(e.target.value)}
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Нэгж өртөг (₮) *</label>
+                  <input
+                    type="number"
+                    value={unitPrice}
+                    onChange={(e) => setUnitPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Доод нөөц</label>
+                  <input
+                    type="number"
+                    value={minStockLevel}
+                    onChange={(e) => setMinStockLevel(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingMaterial(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200"
+                >
+                  Цуцлах
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+                >
+                  Шинэчлэх
                 </button>
               </div>
             </form>

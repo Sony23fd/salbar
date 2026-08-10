@@ -3,7 +3,7 @@ import { Product, User, MaterialType } from '../types/wms';
 import { registerProduct, replenishStock } from '../actions/inventory';
 import { db } from '../lib/db';
 import { api } from '../lib/api';
-import { Package, Search, Plus, RefreshCw, X, ShieldAlert, CheckCircle2, AlertTriangle, ArrowUpRight, ArrowDownRight, Hash, Tag, FileText, Banknote, History, ExternalLink, Pencil, AlertCircle, ClipboardList, Layers } from 'lucide-react';
+import { Package, Search, Plus, RefreshCw, X, ShieldAlert, CheckCircle2, AlertTriangle, ArrowUpRight, ArrowDownRight, Hash, Tag, FileText, Banknote, History, ExternalLink, Pencil, AlertCircle, ClipboardList, Layers, Trash2, RefreshCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface InventoryManagerProps {
@@ -22,6 +22,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
   const [materialFilter, setMaterialFilter] = useState<string>('ALL');
   const [showAddModal, setShowAddModal] = useState(false);
   const [replenishTarget, setReplenishTarget] = useState<Product | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
 
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editWarning, setEditWarning] = useState<string | null>(null);
@@ -59,7 +60,8 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.sku.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCat = categoryFilter === 'ALL' || (p.category?.name || 'Бусад') === categoryFilter;
-    return isFinishedGood && matchesSearch && matchesCat;
+    const matchesActive = showInactive ? !p.isActive : p.isActive;
+    return isFinishedGood && matchesSearch && matchesCat && matchesActive;
   });
 
   const handleCreateProduct = async (e: React.FormEvent) => {
@@ -148,6 +150,27 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
       toast.error(err.message || 'Алдаа гарлаа.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeactivate = async (id: string) => {
+    if (!confirm('Энэ барааг устгах уу? (Идэвхгүй болгох)')) return;
+    try {
+      await api.deactivateProduct(id);
+      toast.success('Бараа устгагдлаа');
+      onRefresh();
+    } catch (err: any) {
+      toast.error(err.message || 'Алдаа гарлаа');
+    }
+  };
+
+  const handleReactivate = async (id: string) => {
+    try {
+      await api.reactivateProduct(id);
+      toast.success('Бараа сэргээгдлээ');
+      onRefresh();
+    } catch (err: any) {
+      toast.error(err.message || 'Алдаа гарлаа');
     }
   };
 
@@ -272,6 +295,18 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
             ))}
           </select>
         </div>
+        
+        <div className="flex items-center">
+          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer bg-white px-3 py-2.5 border border-slate-200 rounded-xl w-full md:w-auto shadow-xs">
+            <input
+              type="checkbox"
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
+              className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+            />
+            Устгасан харуулах
+          </label>
+        </div>
       </div>
 
       {/* Product Catalog Table */}
@@ -339,7 +374,11 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                       </td>
 
                       <td className="p-4 text-center">
-                        {isCritical ? (
+                        {!prod.isActive ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                            Идэвхгүй
+                          </span>
+                        ) : isCritical ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-700 border border-red-200">
                             <AlertTriangle className="w-3 h-3" /> Нэн яаралтай
                           </span>
@@ -357,30 +396,50 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                       {canEdit && (
                         <td className="p-4 text-center">
                           <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => setReplenishTarget(prod)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors"
-                              title="Татан авалт хийх"
-                            >
-                              <RefreshCw className="w-3 h-3" /> Татан авалт
-                            </button>
-                            {(isCritical || isLow) && currentUser.role === 'ADMIN' && (
+                            {prod.isActive ? (
+                              <>
+                                <button
+                                  onClick={() => setReplenishTarget(prod)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors"
+                                  title="Татан авалт хийх"
+                                >
+                                  <RefreshCw className="w-3 h-3" /> Татан авалт
+                                </button>
+                                {(isCritical || isLow) && currentUser.role === 'ADMIN' && (
+                                  <button
+                                    onClick={() => handleCreateRestockTask(prod)}
+                                    disabled={isSubmitting}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors disabled:opacity-50"
+                                    title="Татан авалтын даалгавар үүсгэх"
+                                  >
+                                    <ClipboardList className="w-3 h-3" /> Даалгавар өгөх
+                                  </button>
+                                )}
+                                {currentUser.role === 'ADMIN' && (
+                                  <>
+                                    <button
+                                      onClick={() => handleEditClick(prod)}
+                                      className="inline-flex items-center justify-center p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-200"
+                                      title="Барааг засах"
+                                    >
+                                      <Pencil className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeactivate(prod.id)}
+                                      className="inline-flex items-center justify-center p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors border border-transparent hover:border-red-200"
+                                      title="Устгах"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </>
+                                )}
+                              </>
+                            ) : (
                               <button
-                                onClick={() => handleCreateRestockTask(prod)}
-                                disabled={isSubmitting}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors disabled:opacity-50"
-                                title="Татан авалтын даалгавар үүсгэх"
+                                onClick={() => handleReactivate(prod.id)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors"
                               >
-                                <ClipboardList className="w-3 h-3" /> Даалгавар өгөх
-                              </button>
-                            )}
-                            {currentUser.role === 'ADMIN' && (
-                              <button
-                                onClick={() => handleEditClick(prod)}
-                                className="inline-flex items-center justify-center p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-200"
-                                title="Барааг засах"
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
+                                <RefreshCcw className="w-3 h-3" /> Сэргээх
                               </button>
                             )}
                           </div>
