@@ -205,7 +205,7 @@ export const ReportsManager: React.FC = () => {
               <AlertTriangle className="w-4 h-4 text-red-500" /> Нийт Хорогдол & Тохируулга
             </div>
             <div className="text-2xl font-black text-red-600 font-mono">
-              ₮{(summary.totalScrapLoss - summary.totalAdjustmentImpact).toLocaleString()}
+              ₮{((summary.totalScrapLoss || 0) - (summary.totalAdjustmentImpact || 0)).toLocaleString()}
             </div>
             <p className="text-[10px] text-slate-500">Үйлдвэрийн хорогдол болон устгал/дутагдал</p>
           </div>
@@ -217,7 +217,7 @@ export const ReportsManager: React.FC = () => {
             <div className="text-2xl font-black font-mono">
               ₮{(summary.totalDeliveredNetProfit || 0).toLocaleString()}
             </div>
-            <p className="text-[10px] text-emerald-100">Орлого: ₮{summary.totalDeliveredRevenue.toLocaleString()}</p>
+            <p className="text-[10px] text-emerald-100">Орлого: ₮{(summary.totalDeliveredRevenue || 0).toLocaleString()}</p>
           </div>
         </div>
       )}
@@ -307,10 +307,10 @@ export const ReportsManager: React.FC = () => {
                         {t.newStock}
                       </td>
                       <td className="p-4 text-right text-slate-500 font-mono font-medium">
-                        {t.product ? (t.product.costPrice > 0 ? t.product.costPrice : t.product.unitPrice).toLocaleString() + '₮' : '-'}
+                        {t.product ? ((t.product.costPrice && t.product.costPrice > 0) ? t.product.costPrice : (t.product.unitPrice || 0)).toLocaleString() + '₮' : '-'}
                       </td>
                       <td className="p-4 text-right text-slate-900 font-mono font-bold">
-                        {t.product ? (Math.abs(t.quantity) * (t.product.costPrice > 0 ? t.product.costPrice : t.product.unitPrice)).toLocaleString() + '₮' : '-'}
+                        {t.product ? (Math.abs(t.quantity) * ((t.product.costPrice && t.product.costPrice > 0) ? t.product.costPrice : (t.product.unitPrice || 0))).toLocaleString() + '₮' : '-'}
                       </td>
                       <td className="p-4">
                         <div className="font-semibold text-slate-900">{t.user?.name}</div>
