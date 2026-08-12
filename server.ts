@@ -197,6 +197,34 @@ app.post('/api/seed', async (req, res) => {
     handleApiError(res, err);
   }
 });
+// ------------------------------------------
+// Real-time Events (SSE)
+// ------------------------------------------
+let clients: { id: string, res: any }[] = [];
+
+export function sendSSEEvent(type: string, data: any) {
+  clients.forEach(c => {
+    try {
+      c.res.write(`data: ${JSON.stringify({ type, data })}\n\n`);
+    } catch (err) {
+      // ignore
+    }
+  });
+}
+
+app.get('/api/events', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  const clientId = Date.now().toString();
+  const newClient = { id: clientId, res };
+  clients.push(newClient);
+
+  req.on('close', () => {
+    clients = clients.filter(c => c.id !== clientId);
+  });
+});
 
 
 // Branches
@@ -384,6 +412,50 @@ app.put('/api/categories/:id/reactivate', authenticate(['ADMIN']), async (req, r
 });
 
 // Products
+// Inventory Batches (FEFO Tracking)
+app.get('/api/inventory/expiring-batches', authenticate(), async (req, res) => {
+  try {
+    const procurements = await prisma.procurementItem.findMany({
+      where: { expiryDate: { not: null } },
+      include: { product: true }
+    });
+    
+    const production = await prisma.productionBatch.findMany({
+      where: { expiryDate: { not: null } },
+      include: { finishedProduct: true }
+    });
+
+    // Map to unified structure
+    const batches = [
+      ...procurements.map(p => ({
+        id: p.id,
+        productId: p.productId,
+        productName: p.product.name,
+        batchNumber: `PROC-${p.procurementId.slice(-4)}`,
+        quantity: p.quantity,
+        expiryDate: p.expiryDate,
+        type: 'PROCUREMENT'
+      })),
+      ...production.map(p => ({
+        id: p.id,
+        productId: p.finishedProductId,
+        productName: p.finishedProduct.name,
+        batchNumber: p.batchNumber,
+        quantity: p.quantityProduced,
+        expiryDate: p.expiryDate,
+        type: 'PRODUCTION'
+      }))
+    ];
+
+    // Sort by expiry ascending (FEFO)
+    batches.sort((a, b) => new Date(a.expiryDate!).getTime() - new Date(b.expiryDate!).getTime());
+    
+    res.json(batches);
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
+
 app.get('/api/products', authenticate(), async (req, res) => {
   const includeInactive = req.query.includeInactive === 'true';
   const products = await prisma.product.findMany({
@@ -519,6 +591,54 @@ app.post('/api/products/replenish', authenticate(['ADMIN', 'WAREHOUSE_WORKER', '
     res.json(updated);
   } catch (err) {
     res.status(400).json({ error: String(err) });
+  }
+});
+
+// Manual Material Issue to Production / Other Outbound
+app.post('/api/inventory/issue', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE']), async (req, res) => {
+  const { items, notes, issueType } = req.body;
+  try {
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'Зарлагадах бараа сонгоогүй байна.' });
+    }
+
+    const updatedProducts = await prisma.$transaction(async (tx) => {
+      const results = [];
+      for (const item of items) {
+        const product = await tx.product.findUnique({ where: { id: item.productId } });
+        if (!product) throw new Error(`Бараа олдсонгүй (ID: ${item.productId})`);
+        
+        if (product.stockQuantity < item.quantity) {
+          throw new Error(`'${product.name}' үлдэгдэл хүрэхгүй байна. (Үлдэгдэл: ${product.stockQuantity})`);
+        }
+        
+        const newStock = product.stockQuantity - item.quantity;
+        
+        const updatedProduct = await tx.product.update({
+          where: { id: item.productId },
+          data: { stockQuantity: newStock },
+        });
+        
+        await tx.inventoryTransaction.create({
+          data: {
+            productId: item.productId,
+            type: issueType === 'ADJUSTMENT' ? 'ADJUSTMENT' : 'OUTBOUND',
+            quantity: -Math.abs(item.quantity),
+            previousStock: product.stockQuantity,
+            newStock,
+            userId: req.user!.id,
+            notes: notes || 'Гараар зарлагадсан'
+          }
+        });
+        
+        results.push(updatedProduct);
+      }
+      return results;
+    }, { maxWait: 15000, timeout: 30000 });
+    
+    res.json({ success: true, updatedCount: updatedProducts.length });
+  } catch (err) {
+    handleApiError(res, err, 400);
   }
 });
 
@@ -817,6 +937,8 @@ app.post('/api/orders', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async (req,
       return order;
     }, { maxWait: 10000, timeout: 20000 });
 
+    sendSSEEvent('order_created', { orderNumber: newOrder.orderNumber, branchName: newOrder.branch.name });
+
     res.json(newOrder);
   } catch (err) {
     handleApiError(res, err);
@@ -907,6 +1029,8 @@ app.post('/api/orders/:id/deliver', authenticate(['ADMIN', 'DELIVERY_DRIVER']), 
       });
     }, { maxWait: 10000, timeout: 20000 });
 
+    sendSSEEvent('order_status_updated', { orderNumber: order.orderNumber, status: 'DELIVERED' });
+
     res.json({ success: true });
   } catch (err) {
     handleApiError(res, err, 400);
@@ -917,6 +1041,10 @@ app.put('/api/orders/:id/status', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'DE
   const { id } = req.params;
   const { newStatus, changedById, notes } = req.body;
   try {
+    if (newStatus === 'DELIVERED') {
+      return res.status(400).json({ error: 'Төлөвийг DELIVERED болгохын тулд /api/orders/:id/deliver API-г ашиглана уу (Үлдэгдэл хасагдах шаардлагатай)' });
+    }
+
     const order = await prisma.order.findUnique({ where: { id }, include: { items: { include: { product: true } } } });
     if (!order) return res.status(404).json({ error: 'Order not found' });
 
@@ -935,6 +1063,9 @@ app.put('/api/orders/:id/status', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'DE
       },
       include: { history: { include: { changedBy: true }, orderBy: { createdAt: 'asc' } }, branch: true, createdBy: true, deliveredBy: true, items: { include: { product: true } } }
     });
+    
+    sendSSEEvent('order_status_updated', { orderNumber: updated.orderNumber, status: updated.status });
+
     res.json(updated);
   } catch (err) {
     res.status(400).json({ error: String(err) });
@@ -1037,10 +1168,35 @@ app.post('/api/tasks/:id/comments', authenticate(), async (req, res) => {
 });
 
 // ==========================================
+// Audit Logs API Routes
+// ==========================================
+
+app.get('/api/audit/order-history', authenticate(['ADMIN']), async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 500;
+    const history = await prisma.orderHistory.findMany({
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        order: {
+          select: { orderNumber: true, branch: { select: { name: true } } }
+        },
+        changedBy: {
+          select: { name: true, role: true }
+        }
+      }
+    });
+    res.json(history);
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
+
+// ==========================================
 // BOM (Bill of Materials / Жор) API Routes
 // ==========================================
 
-app.get('/api/boms', authenticate(), async (req, res) => {
+app.get('/api/boms', authenticate(['ADMIN', 'FINANCE', 'WAREHOUSE_WORKER']), async (req, res) => {
   try {
     const boms = await prisma.bOM.findMany({
       include: {
@@ -1204,7 +1360,7 @@ app.delete('/api/boms/:id', authenticate(['ADMIN']), async (req, res) => {
 });
 
 // Deboning Logs (Шулаа ба Анхан шатны боловсруулалт)
-app.get('/api/deboning-logs', authenticate(), async (req, res) => {
+app.get('/api/deboning-logs', authenticate(['ADMIN', 'FINANCE', 'WAREHOUSE_WORKER']), async (req, res) => {
   try {
     const logs = await prisma.deboningLog.findMany({
       orderBy: { date: 'desc' }
@@ -1236,7 +1392,7 @@ app.post('/api/deboning-logs', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINAN
 });
 
 // Livestock Ledgers (Малын тооцоо & Бой)
-app.get('/api/livestock-ledgers', authenticate(), async (req, res) => {
+app.get('/api/livestock-ledgers', authenticate(['ADMIN', 'FINANCE', 'WAREHOUSE_WORKER']), async (req, res) => {
   try {
     const ledgers = await prisma.livestockLedger.findMany({
       orderBy: { date: 'desc' }
@@ -1273,7 +1429,7 @@ app.post('/api/livestock-ledgers', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'F
 // Procurement (Татан авалт) API Routes
 // ==========================================
 
-app.get('/api/procurements', authenticate(), async (req, res) => {
+app.get('/api/procurements', authenticate(['ADMIN', 'FINANCE', 'WAREHOUSE_WORKER']), async (req, res) => {
   try {
     const procurements = await prisma.procurement.findMany({
       include: {
@@ -1402,7 +1558,7 @@ app.post('/api/procurements', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async
 // Production Batch & Costing API Routes
 // ==========================================
 
-app.get('/api/production-batches', authenticate(), async (req, res) => {
+app.get('/api/production-batches', authenticate(['ADMIN', 'FINANCE', 'WAREHOUSE_WORKER']), async (req, res) => {
   try {
     const batches = await prisma.productionBatch.findMany({
       include: {
@@ -1668,7 +1824,45 @@ app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER']),
 // Financial Summary & Analytics API Route
 // ==========================================
 
-app.get('/api/financial-summary', authenticate(), async (req, res) => {
+app.get('/api/analytics/forecast', authenticate(['ADMIN', 'FINANCE', 'WAREHOUSE_WORKER']), async (req, res) => {
+  try {
+    // 30 days back
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const deliveredOrders = await prisma.order.findMany({
+      where: { 
+        status: 'DELIVERED',
+        createdAt: { gte: thirtyDaysAgo }
+      },
+      include: { items: { include: { product: true } } }
+    });
+
+    const salesByProduct = new Map<string, { id: string, name: string, totalSold: number, dailyAverage: number, forecast7Days: number }>();
+
+    deliveredOrders.forEach(order => {
+      order.items.forEach(item => {
+        if (!item.product) return;
+        const pId = item.product.id;
+        const existing = salesByProduct.get(pId) || { id: pId, name: item.product.name, totalSold: 0, dailyAverage: 0, forecast7Days: 0 };
+        existing.totalSold += item.quantity;
+        salesByProduct.set(pId, existing);
+      });
+    });
+
+    const results = Array.from(salesByProduct.values()).map(p => {
+      p.dailyAverage = Number((p.totalSold / 30).toFixed(2));
+      p.forecast7Days = Math.ceil(p.dailyAverage * 7);
+      return p;
+    }).sort((a, b) => b.forecast7Days - a.forecast7Days);
+
+    res.json(results);
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
+
+app.get('/api/financial-summary', authenticate(['ADMIN', 'FINANCE']), async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const dateFilter: any = {};
@@ -1707,6 +1901,18 @@ app.get('/api/financial-summary', authenticate(), async (req, res) => {
 
     const adjustments = await prisma.inventoryTransaction.findMany({
       where: { type: 'ADJUSTMENT', ...dateFilter },
+      include: { product: true }
+    });
+
+    const manualOutbounds = await prisma.inventoryTransaction.findMany({
+      where: { 
+        type: 'OUTBOUND', 
+        ...dateFilter,
+        OR: [
+          { notes: null },
+          { NOT: { notes: { startsWith: 'Хүргэлт' } } }
+        ]
+      },
       include: { product: true }
     });
 
@@ -1803,6 +2009,12 @@ app.get('/api/financial-summary', authenticate(), async (req, res) => {
     const totalNormalScrapLoss = productionBatches.reduce((sum, pb) => sum + Number(pb.normalScrapAmount), 0);
     const totalAbnormalScrapLoss = productionBatches.reduce((sum, pb) => sum + Number(pb.abnormalScrapAmount), 0);
     
+    // Calculate Manual Outbound Cost (Internal Issue)
+    const totalManualOutboundCost = manualOutbounds.reduce((sum, tx) => {
+      const price = Number(tx.product.costPrice) > 0 ? Number(tx.product.costPrice) : Number(tx.product.unitPrice);
+      return sum + (Math.abs(tx.quantity) * price);
+    }, 0);
+    
     // Calculate Adjustment impact (negative is loss, positive is gain)
     const totalAdjustmentImpact = adjustments.reduce((sum, adj) => {
       const price = Number(adj.product.costPrice) > 0 ? Number(adj.product.costPrice) : Number(adj.product.unitPrice);
@@ -1823,6 +2035,7 @@ app.get('/api/financial-summary', authenticate(), async (req, res) => {
       summary: {
         totalProcurementAmount,
         totalMaterialsIssuedCost,
+        totalManualOutboundCost,
         totalFixedOverheadCost,
         totalNormalScrapLoss,
         totalAbnormalScrapLoss,

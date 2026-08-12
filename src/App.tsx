@@ -28,7 +28,7 @@ const resolveInitialTab = (userRole?: string): string => {
       return 'deliveries';
     }
   } else if (userRole === 'FINANCE') {
-    const allowedForFinance = ['manufacturing', 'materials', 'reports', 'dashboard'];
+    const allowedForFinance = ['manufacturing', 'materials', 'reports', 'dashboard', 'inventory', 'orders'];
     if (!allowedForFinance.includes(candidate)) {
       return 'manufacturing';
     }
@@ -129,6 +129,31 @@ export default function App() {
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
+
+  // SSE Listener
+  useEffect(() => {
+    if (!currentUser) return;
+    
+    const token = localStorage.getItem('token');
+    const source = new EventSource('/api/events');
+    
+    source.onmessage = (e) => {
+      try {
+        const { type, data } = JSON.parse(e.data);
+        if (type === 'order_created') {
+          toast.success(`Шинэ захиалга ирлээ! №${data.orderNumber} (${data.branchName})`, { duration: 5000, icon: '📦' });
+          reloadData();
+        } else if (type === 'order_status_updated') {
+          toast.success(`Захиалга №${data.orderNumber} төлөв өөрчлөгдлөө: ${data.status}`, { icon: '🔄' });
+          reloadData();
+        }
+      } catch (err) {
+        console.error("SSE parse error", err);
+      }
+    };
+    
+    return () => source.close();
+  }, [currentUser]);
 
   const handleLoginSuccess = (token: string, user: User) => {
     localStorage.setItem('token', token);
@@ -299,7 +324,7 @@ export default function App() {
             )}
 
             {activeTab === 'reports' && currentUser.role !== 'DELIVERY_DRIVER' && (
-              <ReportsManager />
+              <ReportsManager currentUser={currentUser} />
             )}
 
             {activeTab === 'audit' && currentUser.role === 'ADMIN' && <AuditLogExplorer orders={orders} products={products} />}

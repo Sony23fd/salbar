@@ -28,7 +28,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     ADMIN: ['dashboard', 'tasks', 'inventory', 'materials', 'manufacturing', 'orders', 'deliveries', 'branches', 'categories', 'reports', 'users', 'audit'],
-    FINANCE: ['dashboard', 'materials', 'manufacturing', 'reports'],
+    FINANCE: ['dashboard', 'inventory', 'materials', 'manufacturing', 'orders', 'reports'],
     WAREHOUSE_WORKER: ['dashboard', 'tasks', 'inventory', 'materials', 'manufacturing', 'orders', 'reports'],
     DELIVERY_DRIVER: ['dashboard', 'tasks', 'deliveries']
   };

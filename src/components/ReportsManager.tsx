@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { InventoryTransaction } from '../types/wms';
+import { InventoryTransaction, User } from '../types/wms';
 import { db } from '../lib/db';
 import { api } from '../lib/api';
 import { FileText, Search, ArrowUpRight, ArrowDownRight, Settings2, Download, TrendingUp, AlertTriangle, PieChart, Boxes } from 'lucide-react';
 
-export const ReportsManager: React.FC = () => {
+interface ReportsManagerProps {
+  currentUser: User;
+}
+
+export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) => {
   const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,14 +62,18 @@ export const ReportsManager: React.FC = () => {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [txData, finData] = await Promise.all([
-        db.getTransactions(),
-        api.getFinancialSummary(startDate, endDate)
-      ]);
+      const txData = await db.getTransactions();
       setTransactions(txData);
-      setFinancialData(finData);
+      
+      try {
+        const finData = await api.getFinancialSummary(startDate, endDate);
+        setFinancialData(finData);
+      } catch (err: any) {
+        // Finance summary might be restricted by role (e.g., WAREHOUSE_WORKER)
+        setFinancialData(null);
+      }
     } catch (err) {
-      console.error('Failed to load reports data', err);
+      console.error('Failed to load transactions data', err);
     } finally {
       setIsLoading(false);
     }
@@ -106,7 +114,8 @@ export const ReportsManager: React.FC = () => {
     const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
       + "Үзүүлэлт,Дүн\n"
       + `Нийт татан авалт,${summary.totalProcurementAmount}\n`
-      + `Үйлдвэрт олгосон ТЭМ,${summary.totalMaterialsIssuedCost}\n`
+      + `Үйлдвэрт (Орцоор) олгосон ТЭМ,${summary.totalMaterialsIssuedCost}\n`
+      + `Гараар (Дотоод) зарлагадсан ТЭМ,${summary.totalManualOutboundCost}\n`
       + `Үйлдвэрлэлийн тогтмол зардал,${summary.totalFixedOverheadCost}\n`
       + `Нийт хорогдол,${summary.totalScrapLoss}\n`
       + `Агуулахын тохируулга (Устгал/Илүүдэл),${summary.totalAdjustmentImpact}\n`
@@ -180,7 +189,7 @@ export const ReportsManager: React.FC = () => {
       </div>
 
       {/* COMPREHENSIVE FINANCIAL DASHBOARD */}
-      {summary && (
+      {summary && currentUser.role !== 'WAREHOUSE_WORKER' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in duration-300">
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
             <div className="flex items-center gap-2 text-slate-500 font-bold text-[10px] uppercase tracking-wider">
@@ -193,11 +202,14 @@ export const ReportsManager: React.FC = () => {
 
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
             <div className="flex items-center gap-2 text-slate-500 font-bold text-[10px] uppercase tracking-wider">
-              <Boxes className="w-4 h-4 text-amber-500" /> Үйлдвэрлэлд олгосон
+              <Boxes className="w-4 h-4 text-amber-500" /> Үйлдвэрлэл & Дотоод Зарлага
             </div>
-            <div className="text-2xl font-black text-slate-900 font-mono">
-              ₮{(summary.totalMaterialsIssuedCost || 0).toLocaleString()}
+            <div className="text-2xl font-black text-slate-900 font-mono flex items-baseline gap-2">
+              ₮{((summary.totalMaterialsIssuedCost || 0) + (summary.totalManualOutboundCost || 0)).toLocaleString()}
             </div>
+            <p className="text-[10px] text-slate-500 font-medium">
+              Автоматаар (Орц): ₮{(summary.totalMaterialsIssuedCost || 0).toLocaleString()} <span className="mx-1 opacity-50">|</span> Гараар (Дотоод): ₮{(summary.totalManualOutboundCost || 0).toLocaleString()}
+            </p>
           </div>
 
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">

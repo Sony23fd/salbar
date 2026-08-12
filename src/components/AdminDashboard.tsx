@@ -46,6 +46,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   });
   const [customEndDate, setCustomEndDate] = useState(() => new Date().toISOString().split('T')[0]);
 
+  // Forecast Data
+  const [forecastData, setForecastData] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchForecast = async () => {
+      try {
+        const res = await api.getForecast();
+        setForecastData(res);
+      } catch (err) {
+        console.error('Failed to load forecast', err);
+      }
+    };
+    fetchForecast();
+  }, []);
+
   // Derived Dates
   const { startDate, endDate } = useMemo(() => {
     const end = new Date();
@@ -212,6 +227,36 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           )}
         </div>
       </div>
+
+      {/* Demand Forecast Widget */}
+      {forecastData.length > 0 && (
+        <div className="bg-gradient-to-br from-indigo-900 to-slate-900 rounded-3xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-8 opacity-10">
+            <TrendingUp className="w-48 h-48" />
+          </div>
+          <div className="relative z-10">
+            <h3 className="text-xl font-bold flex items-center gap-2 mb-2">
+              <TrendingUp className="w-6 h-6 text-indigo-400" /> Урьдчилсан таамаглал (Дараагийн 7 хоног)
+            </h3>
+            <p className="text-indigo-200 text-sm mb-6 max-w-2xl">
+              Өнгөрсөн 30 хоногийн борлуулалтын хурдад суурилан дараагийн 7 хоногт шаардагдах барааны тооцоолол.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              {forecastData.slice(0, 4).map((f, i) => (
+                <div key={f.id} className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20">
+                  <div className="text-indigo-200 text-xs font-bold uppercase tracking-wider mb-1 line-clamp-1">
+                    {f.name}
+                  </div>
+                  <div className="text-3xl font-black text-white mb-2">{f.forecast7Days} <span className="text-sm font-normal text-indigo-300">ш</span></div>
+                  <div className="text-[10px] text-indigo-300">
+                    Өдөрт дунджаар {f.dailyAverage} зарагддаг
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">

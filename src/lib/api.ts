@@ -11,12 +11,24 @@ const getHeaders = () => {
 };
 
 export const api = {
+  async getExpiringBatches(): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/inventory/expiring-batches`, { headers: getHeaders() });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
   async login(email: string, password: string): Promise<{ token: string; user: any }> {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async getForecast(): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/analytics/forecast`, { headers: getHeaders() });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },
@@ -205,6 +217,16 @@ export const api = {
     return res.json();
   },
 
+  async issueMaterials(items: { productId: string, quantity: number }[], notes: string, issueType: string): Promise<{ success: boolean, updatedCount: number }> {
+    const res = await fetch(`${API_BASE}/inventory/issue`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ items, notes, issueType }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
   async getOrders(): Promise<Order[]> {
     const res = await fetch(`${API_BASE}/orders`, { headers: getHeaders() });
     if (!res.ok) throw new Error(await res.text());
@@ -219,6 +241,12 @@ export const api = {
 
   async getOrderHistory(id: string): Promise<any[]> {
     const res = await fetch(`${API_BASE}/orders/${id}/history`, { headers: getHeaders() });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async getOrderHistoryLogs(limit: number = 500): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/audit/order-history?limit=${limit}`, { headers: getHeaders() });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },

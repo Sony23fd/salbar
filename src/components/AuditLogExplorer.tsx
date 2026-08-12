@@ -11,21 +11,24 @@ interface AuditLogExplorerProps {
 export const AuditLogExplorer: React.FC<AuditLogExplorerProps> = ({ orders, products }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSnapshot, setSelectedSnapshot] = useState<{ title: string; json: string } | null>(null);
+  const [allLogs, setAllLogs] = useState<(OrderHistory & { orderNumber: string; branchName: string })[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Flatten all history logs from all orders
-  const allLogs: (OrderHistory & { orderNumber: string; branchName: string })[] = [];
-  orders.forEach((ord) => {
-    ord.history.forEach((hist) => {
-      allLogs.push({
-        ...hist,
-        orderNumber: ord.orderNumber,
-        branchName: ord.branchName,
-      });
-    });
-  });
-
-  // Sort logs descending (newest first)
-  allLogs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  useEffect(() => {
+    api.getOrderHistoryLogs(500)
+      .then((data: any[]) => {
+        const formattedLogs = data.map(log => ({
+          ...log,
+          orderNumber: log.order?.orderNumber || 'Тодорхойгүй',
+          branchName: log.order?.branch?.name || 'Тодорхойгүй',
+          changedByName: log.changedBy?.name || 'Тодорхойгүй',
+          changedByRole: log.changedBy?.role || 'WAREHOUSE_WORKER'
+        }));
+        setAllLogs(formattedLogs);
+      })
+      .catch(console.error)
+      .finally(() => setIsLoading(false));
+  }, []);
 
   const filteredLogs = allLogs.filter((log) => {
     const q = searchQuery.toLowerCase();
@@ -113,7 +116,16 @@ export const AuditLogExplorer: React.FC<AuditLogExplorerProps> = ({ orders, prod
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white font-mono">
-              {filteredLogs.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-slate-500 font-sans">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      Аудит лог уншиж байна...
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredLogs.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="p-8 text-center text-slate-500 font-sans">
                     Хайлтад тохирох түүх олдсонгүй.

@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { Order, Branch, Product, User, OrderStatus, OrderStatusConfig } from '../types/wms';
 import { createOrder } from '../actions/order';
 import { db } from '../lib/db';
-import { ShoppingCart, Plus, Search, Filter, Truck, CheckCircle2, AlertTriangle, ShieldAlert, Clock, ChevronRight, Package, MapPin, X, Trash2, Settings, History } from 'lucide-react';
+import { ShoppingCart, Plus, Search, Filter, Truck, CheckCircle2, AlertTriangle, ShieldAlert, Clock, ChevronRight, Package, MapPin, X, Trash2, Settings, History, Printer } from 'lucide-react';
 import { OrderStatusSettingsModal } from './OrderStatusSettingsModal';
 import { api } from '../lib/api';
 
@@ -41,9 +41,11 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
     { productId: products[0]?.id || '', quantity: 1 },
   ]);
   const [notes, setNotes] = useState('');
+  
+  // Barcode Scanner State
+  const [autoScanMode, setAutoScanMode] = useState(false);
+  const [barcodeInput, setBarcodeInput] = useState('');
 
-  
-  
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Admin Status Modal state
@@ -67,6 +69,58 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
     };
     fetchStatuses();
   }, []);
+
+  // Barcode Scanner Listener
+  React.useEffect(() => {
+    if (!autoScanMode || !showCreateModal) {
+      setBarcodeInput('');
+      return;
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in an input field (except if we want to force it)
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      
+      if (e.key === 'Enter') {
+        if (barcodeInput.trim()) {
+          // Process barcode
+          const scannedSku = barcodeInput.trim();
+          const product = products.find(p => p.sku === scannedSku || p.sku.toLowerCase() === scannedSku.toLowerCase());
+          
+          if (product) {
+            setOrderItems(prev => {
+              const existingItemIndex = prev.findIndex(item => item.productId === product.id);
+              if (existingItemIndex >= 0) {
+                const newItems = [...prev];
+                newItems[existingItemIndex].quantity += 1;
+                return newItems;
+              } else {
+                // Find empty row or add new
+                const emptyIndex = prev.findIndex(item => !item.productId);
+                if (emptyIndex >= 0) {
+                  const newItems = [...prev];
+                  newItems[emptyIndex] = { productId: product.id, quantity: 1 };
+                  return newItems;
+                }
+                return [...prev, { productId: product.id, quantity: 1 }];
+              }
+            });
+            toast.success(`${product.name} нэмэгдлээ!`, { id: 'barcode-success' });
+          } else {
+            toast.error(`Бараа олдсонгүй: ${scannedSku}`, { id: 'barcode-error' });
+          }
+        }
+        setBarcodeInput(''); // Reset after enter
+      } else if (e.key.length === 1) { // Normal character
+        setBarcodeInput(prev => prev + e.key);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [autoScanMode, showCreateModal, barcodeInput, products]);
 
   const getStatusBadge = (code: string) => {
     const st = orderStatuses.find(s => s.code === code);
@@ -309,9 +363,73 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
                     </span>
                   </div>
 
-                  <div className="text-right text-xs">
+                  <div className="text-right text-xs flex flex-col items-end gap-1">
                     <div className="font-extrabold text-slate-900 text-sm font-mono">{ord.totalAmount.toLocaleString()}₮</div>
                     <div className="text-slate-500 text-[11px]">{createdDate}</div>
+                    
+                    <button
+                      onClick={() => {
+                        // Print Logic
+                        const printContent = `
+                          <div style="font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
+                            <h2 style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px;">ЗАРЛАГЫН ПАДААН</h2>
+                            <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+                              <div>
+                                <strong>Захиалгын №:</strong> ${ord.orderNumber}<br/>
+                                <strong>Огноо:</strong> ${createdDate}
+                              </div>
+                              <div style="text-align: right;">
+                                <strong>Салбар:</strong> ${ord.branchName}<br/>
+                                <strong>Хаяг:</strong> ${ord.branchLocation}
+                              </div>
+                            </div>
+                            <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                              <thead>
+                                <tr style="background: #f1f1f1;">
+                                  <th style="border: 1px solid #ccc; padding: 8px; text-align: left;">Барааны нэр</th>
+                                  <th style="border: 1px solid #ccc; padding: 8px; text-align: center;">Тоо ширхэг</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                ${ord.items.map(item => `
+                                  <tr>
+                                    <td style="border: 1px solid #ccc; padding: 8px;">${item.productName}</td>
+                                    <td style="border: 1px solid #ccc; padding: 8px; text-align: center;">${item.quantity}</td>
+                                  </tr>
+                                `).join('')}
+                              </tbody>
+                            </table>
+                            <div style="margin-top: 20px; text-align: right; font-size: 18px;">
+                              <strong>Нийт дүн:</strong> ${ord.totalAmount.toLocaleString()}₮
+                            </div>
+                            <div style="margin-top: 50px; display: flex; justify-content: space-between;">
+                              <div>
+                                <strong>Хүлээлгэн өгсөн:</strong> .....................................<br/>
+                                <span style="font-size: 12px; color: #666;">(Гарын үсэг)</span>
+                              </div>
+                              <div>
+                                <strong>Хүлээн авсан:</strong> .....................................<br/>
+                                <span style="font-size: 12px; color: #666;">(Гарын үсэг)</span>
+                              </div>
+                            </div>
+                          </div>
+                        `;
+                        const printWindow = window.open('', '', 'width=800,height=600');
+                        if (printWindow) {
+                          printWindow.document.write(printContent);
+                          printWindow.document.close();
+                          printWindow.focus();
+                          setTimeout(() => {
+                            printWindow.print();
+                            printWindow.close();
+                          }, 250);
+                        }
+                      }}
+                      className="mt-1 flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                      title="Падаан хэвлэх"
+                    >
+                      <Printer className="w-3 h-3" /> Хэвлэх
+                    </button>
                   </div>
                 </div>
 
@@ -524,6 +642,32 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
               
 
               
+
+              {/* Auto Scan Toggle */}
+              <div className="flex items-center justify-between bg-blue-50 border border-blue-100 p-3 rounded-xl">
+                <div>
+                  <label className="text-xs font-bold text-blue-900 flex items-center gap-2">
+                    <Package className="w-4 h-4 text-blue-600" /> Баркодоор нэмэх (Auto-Scan)
+                  </label>
+                  <p className="text-[10px] text-blue-700 mt-0.5">
+                    Идэвхжүүлсэн үед баркод уншигчаар барааг шууд жагсаалтад нэмнэ.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAutoScanMode(!autoScanMode)}
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                    autoScanMode ? 'bg-blue-600' : 'bg-slate-300'
+                  }`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      autoScanMode ? 'translate-x-2' : '-translate-x-2'
+                    }`}
+                  />
+                </button>
+              </div>
 
               {/* Branch Selector */}
               <div>

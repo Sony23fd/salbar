@@ -442,6 +442,7 @@ model ProcurementItem {
   quantity      Float
   unitPrice     Decimal     @db.Decimal(10, 2)
   totalPrice    Decimal     @db.Decimal(10, 2)
+  expiryDate    DateTime?
 
   @@map("procurement_items")
 }
@@ -462,6 +463,7 @@ model ProductionBatch {
   totalMaterialCost   Decimal               @db.Decimal(10, 2) @default(0)
   totalProductionCost Decimal               @db.Decimal(10, 2) @default(0)
   calculatedUnitCost  Decimal               @db.Decimal(10, 2) @default(0)
+  expiryDate          DateTime?
   notes               String?
   
   // Tech Card Batch Execution

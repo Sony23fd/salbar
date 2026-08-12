@@ -8,6 +8,7 @@ import {
   Plus,
   RefreshCw,
   X,
+  Minus,
   CheckCircle2,
   AlertTriangle,
   Package,
@@ -18,6 +19,7 @@ import {
   Trash2,
   RefreshCcw
 } from 'lucide-react';
+import { MaterialIssueModal } from './MaterialIssueModal';
 
 interface MaterialManagerProps {
   products: Product[];
@@ -35,6 +37,7 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
 
   // Modals state
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showIssueModal, setShowIssueModal] = useState(false);
   const [replenishTarget, setReplenishTarget] = useState<Product | null>(null);
   const [editingMaterial, setEditingMaterial] = useState<Product | null>(null);
   const [showInactive, setShowInactive] = useState(false);
@@ -241,12 +244,20 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
         </div>
 
         {canEdit && (
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white transition-colors shadow-xs"
-          >
-            <Plus className="w-4 h-4" /> Шинэ ТЭМ / Сав баглаа бүртгэх
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              onClick={() => setShowIssueModal(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-100 hover:bg-amber-200 text-amber-900 transition-colors shadow-xs border border-amber-200"
+            >
+              <Minus className="w-4 h-4" /> Зарлагадах / Олгох
+            </button>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white transition-colors shadow-xs"
+            >
+              <Plus className="w-4 h-4" /> Шинэ ТЭМ / Сав баглаа бүртгэх
+            </button>
+          </div>
         )}
       </div>
 
@@ -748,6 +759,17 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
             </form>
           </div>
         </div>
+      )}
+
+      {showIssueModal && (
+        <MaterialIssueModal
+          materials={materialsList}
+          onClose={() => setShowIssueModal(false)}
+          onSuccess={() => {
+            setShowIssueModal(false);
+            onRefresh();
+          }}
+        />
       )}
     </div>
   );

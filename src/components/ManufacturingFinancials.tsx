@@ -38,7 +38,9 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
   currentUser,
   onRefreshProducts
 }) => {
-  const [activeTab, setActiveTab] = useState<'BREAKDOWN' | 'OPERATIONS' | 'VALUATION'>('BREAKDOWN');
+  const [activeTab, setActiveTab] = useState<'BREAKDOWN' | 'OPERATIONS' | 'VALUATION'>(
+    currentUser.role === 'WAREHOUSE_WORKER' ? 'OPERATIONS' : 'BREAKDOWN'
+  );
   const [loading, setLoading] = useState(true);
   const [financialData, setFinancialData] = useState<any>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -161,20 +163,32 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
   const loadAllData = async () => {
     setLoading(true);
     try {
-      const [finData, prods, bData, procData, batchData] = await Promise.all([
-        api.getFinancialSummary(startDate, endDate),
-        api.getProducts(),
-        api.getBOMs(),
-        api.getProcurements(),
-        api.getProductionBatches()
-      ]);
-      setFinancialData(finData);
+      const prods = await api.getProducts();
       setProducts(prods);
-      setBoms(bData);
-      setProcurements(procData);
-      setProductionBatches(batchData);
+
+      try {
+        const finData = await api.getFinancialSummary(startDate, endDate);
+        setFinancialData(finData);
+      } catch (e) {
+        setFinancialData(null);
+      }
+
+      try {
+        const [bData, procData, batchData] = await Promise.all([
+          api.getBOMs(),
+          api.getProcurements(),
+          api.getProductionBatches()
+        ]);
+        setBoms(bData);
+        setProcurements(procData);
+        setProductionBatches(batchData);
+      } catch (e) {
+        setBoms([]);
+        setProcurements([]);
+        setProductionBatches([]);
+      }
     } catch (err) {
-      console.error('Failed to load financial data:', err);
+      console.error('Failed to load products data:', err);
     } finally {
       setLoading(false);
     }
@@ -448,28 +462,32 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
 
       {/* Navigation Tabs */}
       <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 overflow-x-auto">
-        <button
-          onClick={() => setActiveTab('BREAKDOWN')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'BREAKDOWN'
-              ? 'bg-white text-blue-600 shadow-sm'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Layers className="w-4 h-4" /> Барааны Орц & Өртөг Тооцоолол
-        </button>
+        {currentUser.role !== 'WAREHOUSE_WORKER' && (
+          <button
+            onClick={() => setActiveTab('BREAKDOWN')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              activeTab === 'BREAKDOWN'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Layers className="w-4 h-4" /> Барааны Орц & Өртөг Тооцоолол
+          </button>
+        )}
 
 
-        <button
-          onClick={() => setActiveTab('VALUATION')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'VALUATION'
-              ? 'bg-white text-blue-600 shadow-sm'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Boxes className="w-4 h-4" /> Материал & Үлдэгдлийн Үнэлгээ
-        </button>
+        {currentUser.role !== 'WAREHOUSE_WORKER' && (
+          <button
+            onClick={() => setActiveTab('VALUATION')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              activeTab === 'VALUATION'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Boxes className="w-4 h-4" /> Материал & Үлдэгдлийн Үнэлгээ
+          </button>
+        )}
 
         <button
           onClick={() => setActiveTab('OPERATIONS')}
