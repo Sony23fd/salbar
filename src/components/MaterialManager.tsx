@@ -190,28 +190,35 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
     e.preventDefault();
     if (!replenishTarget) return;
 
-    ;
     setIsSubmitting(true);
 
     try {
       const addQty = Number(replenishQty || 0);
       const newPrice = Number(replenishCostPrice || replenishTarget.unitPrice || 0);
 
-      const newStock = replenishTarget.stockQuantity + addQty;
+      // 1. Үнэ өөрчлөгдсөн бол шинэчлэх
       await api.updateProduct(replenishTarget.id, {
-        stockQuantity: newStock,
         costPrice: newPrice,
         unitPrice: newPrice
       });
 
+      // 2. Агуулахын нөөц нэмэх (Transaction үүсгэх)
+      if (addQty > 0) {
+        await api.replenishProduct(
+          replenishTarget.id,
+          addQty,
+          currentUser.id,
+          `ТЭМ татан авалт. Өртөг: ${newPrice}₮`
+        );
+      }
+
       toast.success('Материалын агуулахын нөөц амжилттай нэмэгдлээ!');
-      setTimeout(() => {
-        setReplenishTarget(null);
-        setReplenishQty(50);
-        setReplenishCostPrice('');
-        ;
-        onRefresh();
-      }, 1000);
+      
+      // 3. UI-г шууд шинэчлэх
+      setReplenishTarget(null);
+      setReplenishQty(50);
+      setReplenishCostPrice('');
+      onRefresh();
     } catch (err: any) {
       toast.error(err.message || 'Алдаа гарлаа.');
     } finally {
@@ -367,6 +374,7 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
                 <th className="px-4 py-3 font-bold text-[11px] uppercase">Материалын нэр / SKU</th>
                 <th className="px-4 py-3 font-bold text-[11px] uppercase">Төрөл</th>
                 <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Үлдэгдэл нөөц</th>
+                <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Эхний үлдэгдэл</th>
                 <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Нэгж худалдан авах өртөг</th>
                 <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Нийт нөөцийн өртөг</th>
                 <th className="px-4 py-3 font-bold text-[11px] uppercase text-center">Төлөв</th>
@@ -395,6 +403,9 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
                       <span className={isLow ? 'text-amber-700' : 'text-slate-900'}>
                         {m.stockQuantity} {m.unit || 'ш'}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-right font-medium text-slate-500">
+                      {m.initialStock || 0} {m.unit || 'ш'}
                     </td>
                     <td className="px-4 py-3 text-right font-mono font-semibold text-slate-800">
                       ₮{cost.toLocaleString()}

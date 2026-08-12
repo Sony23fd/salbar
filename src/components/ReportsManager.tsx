@@ -12,21 +12,44 @@ export const ReportsManager: React.FC = () => {
   
   // Financial Summary State
   const [financialData, setFinancialData] = useState<any>(null);
-  const [dateRange, setDateRange] = useState<'30days' | 'thisMonth' | 'all'>('all');
+  const [dateRange, setDateRange] = useState<'today' | '7days' | '30days' | 'thisMonth' | 'lastMonth' | 'thisYear' | 'all' | 'custom'>('all');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
 
   const { startDate, endDate } = useMemo(() => {
     if (dateRange === 'all') return { startDate: undefined, endDate: undefined };
+    if (dateRange === 'custom') {
+      if (!customStart || !customEnd) return { startDate: undefined, endDate: undefined };
+      const start = new Date(customStart);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(customEnd);
+      end.setHours(23, 59, 59, 999);
+      return { startDate: start.toISOString(), endDate: end.toISOString() };
+    }
+
     const end = new Date();
     end.setHours(23, 59, 59, 999);
     let start = new Date();
-    if (dateRange === '30days') {
+    
+    if (dateRange === 'today') {
+      // start is already today
+    } else if (dateRange === '7days') {
+      start.setDate(start.getDate() - 7);
+    } else if (dateRange === '30days') {
       start.setDate(start.getDate() - 30);
     } else if (dateRange === 'thisMonth') {
       start.setDate(1);
+    } else if (dateRange === 'lastMonth') {
+      start.setMonth(start.getMonth() - 1);
+      start.setDate(1);
+      end.setMonth(start.getMonth() + 1);
+      end.setDate(0);
+    } else if (dateRange === 'thisYear') {
+      start.setMonth(0, 1);
     }
     start.setHours(0, 0, 0, 0);
     return { startDate: start.toISOString(), endDate: end.toISOString() };
-  }, [dateRange]);
+  }, [dateRange, customStart, customEnd]);
 
   useEffect(() => {
     loadData();
@@ -113,15 +136,37 @@ export const ReportsManager: React.FC = () => {
           </p>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {dateRange === 'custom' && (
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-slate-200 text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <span className="text-slate-400">-</span>
+              <input
+                type="date"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-slate-200 text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )}
           <select
             value={dateRange}
             onChange={(e) => setDateRange(e.target.value as any)}
             className="px-4 py-2 rounded-xl text-xs font-bold bg-white border border-slate-200 text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="all">Бүх хугацаа</option>
+            <option value="today">Өнөөдөр</option>
+            <option value="7days">Сүүлийн 7 хоног</option>
             <option value="thisMonth">Энэ сар</option>
+            <option value="lastMonth">Өмнөх сар</option>
             <option value="30days">Сүүлийн 30 хоног</option>
+            <option value="thisYear">Энэ жил</option>
+            <option value="all">Бүх хугацаа</option>
+            <option value="custom">Сонгох...</option>
           </select>
           
           <button
@@ -216,9 +261,11 @@ export const ReportsManager: React.FC = () => {
                   <th className="p-4">Огноо</th>
                   <th className="p-4">Гүйлгээний төрөл</th>
                   <th className="p-4">Бараа</th>
-                  <th className="p-4 text-right">Өмнөх үлдэгдэл</th>
-                  <th className="p-4 text-right">Тоо хэмжээ</th>
-                  <th className="p-4 text-right">Шинэ үлдэгдэл</th>
+                  <th className="p-4 text-right">Орлого (+)</th>
+                  <th className="p-4 text-right">Зарлага (-)</th>
+                  <th className="p-4 text-right">Үлдэгдэл</th>
+                  <th className="p-4 text-right">Нэгж үнэ</th>
+                  <th className="p-4 text-right">Нийт дүн</th>
                   <th className="p-4">Хариуцсан хэрэглэгч</th>
                   <th className="p-4">Тайлбар</th>
                 </tr>
@@ -226,11 +273,11 @@ export const ReportsManager: React.FC = () => {
               <tbody className="divide-y divide-slate-100 font-sans">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-500">Уншиж байна...</td>
+                    <td colSpan={10} className="p-8 text-center text-slate-500">Уншиж байна...</td>
                   </tr>
                 ) : filteredTransactions.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-500">Гүйлгээ олдсонгүй. (Шүүлтүүрээ шалгана уу)</td>
+                    <td colSpan={10} className="p-8 text-center text-slate-500">Гүйлгээ олдсонгүй. (Шүүлтүүрээ шалгана уу)</td>
                   </tr>
                 ) : (
                   filteredTransactions.map((t) => (
@@ -250,16 +297,20 @@ export const ReportsManager: React.FC = () => {
                         <div className="font-bold text-slate-900">{t.product?.name}</div>
                         <div className="text-[10px] text-slate-500 font-mono">{t.product?.sku}</div>
                       </td>
-                      <td className="p-4 text-right text-slate-500 font-mono font-medium">
-                        {t.previousStock}
+                      <td className="p-4 text-right font-mono font-bold text-emerald-600">
+                        {t.quantity > 0 ? `+${t.quantity}` : '-'}
                       </td>
-                      <td className="p-4 text-right font-mono font-bold">
-                        <span className={t.quantity > 0 ? 'text-emerald-600' : 'text-red-600'}>
-                          {t.quantity > 0 ? `+${t.quantity}` : t.quantity}
-                        </span>
+                      <td className="p-4 text-right font-mono font-bold text-red-600">
+                        {t.quantity < 0 ? `${t.quantity}` : '-'}
                       </td>
                       <td className="p-4 text-right text-slate-900 font-mono font-bold">
                         {t.newStock}
+                      </td>
+                      <td className="p-4 text-right text-slate-500 font-mono font-medium">
+                        {t.product ? (t.product.costPrice > 0 ? t.product.costPrice : t.product.unitPrice).toLocaleString() + '₮' : '-'}
+                      </td>
+                      <td className="p-4 text-right text-slate-900 font-mono font-bold">
+                        {t.product ? (Math.abs(t.quantity) * (t.product.costPrice > 0 ? t.product.costPrice : t.product.unitPrice)).toLocaleString() + '₮' : '-'}
                       </td>
                       <td className="p-4">
                         <div className="font-semibold text-slate-900">{t.user?.name}</div>

@@ -318,6 +318,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                 <th className="p-4">SKU / Барааны мэдээлэл</th>
                 <th className="p-4">Ангилал</th>
                 <th className="p-4 text-right">Нэгж үнэ</th>
+                <th className="p-4 text-right">Эхний үлдэгдэл</th>
                 <th className="p-4 text-right">Агуулахын үлдэгдэл</th>
                 <th className="p-4 text-right">Нийт дүн</th>
                 <th className="p-4 text-center">Төлөв</th>
@@ -361,6 +362,10 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
 
                       <td className="p-4 text-right font-mono font-bold text-slate-900">
                         {prod.unitPrice.toLocaleString()}₮
+                      </td>
+
+                      <td className="p-4 text-right font-mono font-medium text-slate-500">
+                        {prod.initialStock || 0}
                       </td>
 
                       <td className="p-4 text-right font-mono font-bold text-sm">

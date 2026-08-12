@@ -147,6 +147,7 @@ model Product {
   unit          String       @default("ш")
   materialType  MaterialType @default(FINISHED_GOOD)
   stockQuantity Int          @default(0)
+  initialStock  Int          @default(0) // Эхний үлдэгдэл
   minStockLevel Int          @default(5)
   isActive      Boolean      @default(true)
   

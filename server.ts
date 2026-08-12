@@ -397,21 +397,42 @@ app.get('/api/products', authenticate(), async (req, res) => {
 app.post('/api/products', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE']), async (req, res) => {
   try {
     const data = req.body;
-    const newProduct = await prisma.product.create({
-      data: {
-        sku: data.sku,
-        name: data.name,
-        description: data.description,
-        unitPrice: data.unitPrice,
-        costPrice: data.costPrice || 0,
-        unit: data.unit || 'ш',
-        materialType: data.materialType || 'FINISHED_GOOD',
-        stockQuantity: data.stockQuantity,
-        minStockLevel: data.minStockLevel || 5,
-        categoryId: data.categoryId || null
-      },
-      include: { category: true }
+    
+    const newProduct = await prisma.$transaction(async (tx) => {
+      const product = await tx.product.create({
+        data: {
+          sku: data.sku,
+          name: data.name,
+          description: data.description,
+          unitPrice: data.unitPrice,
+          costPrice: data.costPrice || 0,
+          unit: data.unit || 'ш',
+          materialType: data.materialType || 'FINISHED_GOOD',
+          stockQuantity: data.stockQuantity,
+          initialStock: data.stockQuantity || 0,
+          minStockLevel: data.minStockLevel || 5,
+          categoryId: data.categoryId || null
+        },
+        include: { category: true }
+      });
+
+      if (product.stockQuantity > 0) {
+        await tx.inventoryTransaction.create({
+          data: {
+            productId: product.id,
+            type: 'ADJUSTMENT',
+            quantity: product.stockQuantity,
+            previousStock: 0,
+            newStock: product.stockQuantity,
+            userId: req.user!.id,
+            notes: 'Эхний үлдэгдэл бүртгэв'
+          }
+        });
+      }
+      
+      return product;
     });
+
     res.json(newProduct);
   } catch (err) {
     handleApiError(res, err, 400);
