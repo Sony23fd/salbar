@@ -39,7 +39,10 @@ export interface Branch {
   type: BranchType;
   isActive: boolean;
   marginPercent?: number;
-  lastActivityAt: string | Date;
+  profitPercent?: number;
+  commissionPercent?: number;
+  vatPercent?: number;
+  lastActivityAt?: string | Date;
   orders?: Order[];
   inventory?: BranchInventory[];
   createdAt: string;
@@ -246,6 +249,9 @@ export interface Order {
   status: OrderStatus;
   totalAmount: number;
   baseTotalAmount?: number;
+  profitTotalAmount?: number;
+  commissionTotalAmount?: number;
+  vatTotalAmount?: number;
   marginProfit?: number;
   createdById: string;
   createdByName: string;
@@ -282,7 +288,9 @@ export interface InventoryTransaction {
   referenceId?: string;
   notes?: string;
   createdAt: string;
-  product?: { sku: string; name: string };
+  unitPrice?: number;
+  totalPrice?: number;
+  product?: { sku: string; name: string; costPrice?: number; unitPrice?: number };
   user?: { name: string; role: Role };
 }
 
@@ -337,5 +345,17 @@ export interface BranchInventory {
   productId: string;
   product?: Product;
   quantity: number;
+  updatedAt: string | Date;
+}
+
+export interface OperatingExpense {
+  id: string;
+  type: string;
+  amount: number;
+  expenseDate: string | Date;
+  notes?: string;
+  recordedById: string;
+  recordedBy?: User;
+  createdAt: string | Date;
   updatedAt: string | Date;
 }

@@ -16,6 +16,7 @@ import { CategoryManager } from './components/CategoryManager';
 import { ReportsManager } from './components/ReportsManager';
 import { UserManager } from './components/UserManager';
 import { ManufacturingFinancials } from './components/ManufacturingFinancials';
+import { ExpenseManager } from './components/ExpenseManager';
 import { Login } from './components/Login';
 
 const resolveInitialTab = (userRole?: string): string => {
@@ -28,7 +29,7 @@ const resolveInitialTab = (userRole?: string): string => {
       return 'deliveries';
     }
   } else if (userRole === 'FINANCE') {
-    const allowedForFinance = ['manufacturing', 'materials', 'reports', 'dashboard', 'inventory', 'orders'];
+    const allowedForFinance = ['manufacturing', 'materials', 'reports', 'expenses', 'dashboard', 'inventory', 'orders'];
     if (!allowedForFinance.includes(candidate)) {
       return 'manufacturing';
     }

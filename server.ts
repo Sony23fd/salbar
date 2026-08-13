@@ -306,6 +306,7 @@ app.post('/api/branches/:id/inventory/adjust', authenticate(['ADMIN', 'WAREHOUSE
             where: { id: productId },
             data: { stockQuantity: newStock }
           });
+          const priceToUse = Number(product.costPrice) > 0 ? Number(product.costPrice) : Number(product.unitPrice);
           await tx.inventoryTransaction.create({
             data: {
               productId,
@@ -313,6 +314,8 @@ app.post('/api/branches/:id/inventory/adjust', authenticate(['ADMIN', 'WAREHOUSE
               quantity: quantityToDeduct,
               previousStock: product.stockQuantity,
               newStock,
+              unitPrice: priceToUse,
+              totalPrice: quantityToDeduct * priceToUse,
               userId: req.user!.id,
               notes: notes || `Салбарын буцаалт (Branch ID: ${id})`
             }
@@ -489,6 +492,7 @@ app.post('/api/products', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE'])
       });
 
       if (product.stockQuantity > 0) {
+        const priceToUse = Number(product.costPrice) > 0 ? Number(product.costPrice) : Number(product.unitPrice);
         await tx.inventoryTransaction.create({
           data: {
             productId: product.id,
@@ -496,6 +500,8 @@ app.post('/api/products', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE'])
             quantity: product.stockQuantity,
             previousStock: 0,
             newStock: product.stockQuantity,
+            unitPrice: priceToUse,
+            totalPrice: product.stockQuantity * priceToUse,
             userId: req.user!.id,
             notes: 'Эхний үлдэгдэл бүртгэв'
           }
@@ -579,6 +585,7 @@ app.post('/api/products/replenish', authenticate(['ADMIN', 'WAREHOUSE_WORKER', '
       });
       
       if (userId) {
+        const priceToUse = Number(product.costPrice) > 0 ? Number(product.costPrice) : Number(product.unitPrice);
         await tx.inventoryTransaction.create({
           data: {
             productId,
@@ -589,6 +596,8 @@ app.post('/api/products/replenish', authenticate(['ADMIN', 'WAREHOUSE_WORKER', '
             newStock,
             previousSecondaryStock: product.stockSecondaryQuantity,
             newSecondaryStock: newSecondaryStock,
+            unitPrice: priceToUse,
+            totalPrice: Math.abs(quantityToAdd) * priceToUse,
             userId,
             notes: notes || (isAdjustment ? 'Барааны тохируулга' : 'Бараа татан авалт')
           }
@@ -634,6 +643,7 @@ app.post('/api/inventory/issue', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FIN
           },
         });
         
+        const priceToUse = Number(product.costPrice) > 0 ? Number(product.costPrice) : Number(product.unitPrice);
         await tx.inventoryTransaction.create({
           data: {
             productId: item.productId,
@@ -644,6 +654,8 @@ app.post('/api/inventory/issue', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FIN
             newStock,
             previousSecondaryStock: product.stockSecondaryQuantity,
             newSecondaryStock: newSecondaryStock,
+            unitPrice: priceToUse,
+            totalPrice: Math.abs(item.quantity) * priceToUse,
             userId: req.user!.id,
             notes: notes || 'Гараар зарлагадсан'
           }
@@ -709,7 +721,7 @@ app.get('/api/reports/transactions/paginated', authenticate(['ADMIN', 'WAREHOUSE
         skip,
         take: limit,
         include: {
-          product: { select: { sku: true, name: true } },
+          product: { select: { sku: true, name: true, costPrice: true, unitPrice: true } },
           user: { select: { name: true, role: true } }
         },
         orderBy: { createdAt: 'desc' }
@@ -908,23 +920,43 @@ app.post('/api/orders', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async (req,
 
     let totalAmount = 0;
     let baseTotalAmount = 0;
+    let profitTotalAmount = 0;
+    let commissionTotalAmount = 0;
+    let vatTotalAmount = 0;
     let marginProfit = 0;
     const itemsData = [];
     
-    const marginPercent = branch.marginPercent || 0;
+    const profitPercent = branch.profitPercent || 0;
+    const commissionPercent = branch.commissionPercent || 0;
+    const vatPercent = branch.vatPercent || 0;
     
     for (const item of itemsInput) {
       const product = await prisma.product.findUnique({ where: { id: item.productId } });
       if (!product) return res.status(404).json({ error: `Product ${item.productId} not found` });
       
-      const basePrice = Number(product.unitPrice);
-      const effectivePrice = basePrice * (1 + marginPercent / 100);
+      const baseCost = Number(product.costPrice) > 0 ? Number(product.costPrice) : Number(product.unitPrice);
       
-      const itemBaseTotal = basePrice * item.quantity;
+      const profitAmt = baseCost * (profitPercent / 100);
+      const costPlusProfit = baseCost + profitAmt;
+      
+      const commissionAmt = costPlusProfit * (commissionPercent / 100);
+      const costPlusProfitPlusComm = costPlusProfit + commissionAmt;
+      
+      const vatAmt = costPlusProfitPlusComm * (vatPercent / 100);
+      
+      const effectivePrice = costPlusProfitPlusComm + vatAmt;
+      
+      const itemBaseTotal = baseCost * item.quantity;
+      const itemProfitTotal = profitAmt * item.quantity;
+      const itemCommTotal = commissionAmt * item.quantity;
+      const itemVatTotal = vatAmt * item.quantity;
       const itemEffectiveTotal = effectivePrice * item.quantity;
       
       totalAmount += itemEffectiveTotal;
       baseTotalAmount += itemBaseTotal;
+      profitTotalAmount += itemProfitTotal;
+      commissionTotalAmount += itemCommTotal;
+      vatTotalAmount += itemVatTotal;
       marginProfit += (itemEffectiveTotal - itemBaseTotal);
       
       itemsData.push({
@@ -946,6 +978,9 @@ app.post('/api/orders', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async (req,
           createdById,
           totalAmount,
           baseTotalAmount,
+          profitTotalAmount,
+          commissionTotalAmount,
+          vatTotalAmount,
           marginProfit,
           status: 'PENDING',
           items: {
@@ -1009,6 +1044,7 @@ app.post('/api/orders/:id/deliver', authenticate(['ADMIN', 'DELIVERY_DRIVER']), 
           data: { stockQuantity: newStock }
         });
         
+        const priceToUse = Number(product.costPrice) > 0 ? Number(product.costPrice) : Number(product.unitPrice);
         await tx.inventoryTransaction.create({
           data: {
             productId: product.id,
@@ -1016,6 +1052,8 @@ app.post('/api/orders/:id/deliver', authenticate(['ADMIN', 'DELIVERY_DRIVER']), 
             quantity: -item.quantity,
             previousStock: product.stockQuantity,
             newStock,
+            unitPrice: priceToUse,
+            totalPrice: item.quantity * priceToUse,
             userId: driverId,
             referenceId: order.orderNumber,
             notes: `Захиалгын хүргэлт (${order.orderNumber})`
@@ -1559,6 +1597,8 @@ app.post('/api/procurements', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async
                 newStock: newStock,
                 previousSecondaryStock: prod.stockSecondaryQuantity,
                 newSecondaryStock: newSecondaryStock !== undefined ? newSecondaryStock : undefined,
+                unitPrice: item.unitPrice,
+                totalPrice: item.totalPrice,
                 userId: req.user!.id,
                 notes: `Татан авалт #${procurementNo} (${supplierName || 'Нэгдсэн татан авалт'})`
               }
@@ -1606,6 +1646,8 @@ app.post('/api/procurements', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async
               newStock: newStock,
               previousSecondaryStock: prod.stockSecondaryQuantity,
               newSecondaryStock: newSecondaryStock !== undefined ? newSecondaryStock : undefined,
+              unitPrice: item.unitPrice,
+              totalPrice: item.totalPrice,
               userId: req.user!.id,
               notes: `Татан авалт #${procurementNo} (${supplierName || 'Нэгдсэн татан авалт'})`
             }
@@ -1788,6 +1830,8 @@ app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER', '
               newStock: newStock,
               previousSecondaryStock: prod.stockSecondaryQuantity,
               newSecondaryStock: newSecondaryStock !== undefined ? newSecondaryStock : undefined,
+              unitPrice: item.unitPrice,
+              totalPrice: item.totalPrice,
               userId: req.user!.id,
               notes: `Үйлдвэрлэлд олгосон ТЭМ/Материал #${batchNumber}`
             }
@@ -1810,6 +1854,8 @@ app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER', '
             quantity: qProduced,
             previousStock: finishedProd.stockQuantity,
             newStock: newFinishedStock,
+            unitPrice: calculatedUnitCost,
+            totalPrice: qProduced * calculatedUnitCost,
             userId: req.user!.id,
             notes: `Үйлдвэрлэлээс хүлээн авсан бэлэн бүтээгдэхүүн #${batchNumber} (Өртөг: ₮${calculatedUnitCost.toLocaleString()}/нэгж)`
           }
@@ -1852,6 +1898,8 @@ app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER', '
             quantity: -item.quantityUsed,
             previousStock: prod.stockQuantity,
             newStock: newStock,
+            unitPrice: item.unitPrice,
+            totalPrice: item.totalPrice,
             userId: req.user!.id,
             notes: `Үйлдвэрлэлд олгосон ТЭМ/Материал #${batchNumber}`
           }
@@ -1874,6 +1922,8 @@ app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER', '
           quantity: qProduced,
           previousStock: finishedProd.stockQuantity,
           newStock: newFinishedStock,
+          unitPrice: calculatedUnitCost,
+          totalPrice: qProduced * calculatedUnitCost,
           userId: req.user!.id,
           notes: `Үйлдвэрлэлээс хүлээн авсан бэлэн бүтээгдэхүүн #${batchNumber} (Өртөг: ₮${calculatedUnitCost.toLocaleString()}/нэгж)`
         }
@@ -1950,6 +2000,63 @@ app.get('/api/analytics/forecast', authenticate(['ADMIN', 'FINANCE', 'WAREHOUSE_
   }
 });
 
+// ==========================================
+// Expenses API Routes
+// ==========================================
+
+app.get('/api/expenses', authenticate(['ADMIN', 'FINANCE']), async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const where: any = {};
+    if (startDate && endDate) {
+      where.expenseDate = {
+        gte: new Date(startDate as string),
+        lte: new Date(endDate as string)
+      };
+    }
+    const expenses = await prisma.operatingExpense.findMany({
+      where,
+      include: {
+        recordedBy: { select: { id: true, name: true, role: true } }
+      },
+      orderBy: { expenseDate: 'desc' }
+    });
+    res.json(expenses);
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
+
+app.post('/api/expenses', authenticate(['ADMIN', 'FINANCE']), async (req, res) => {
+  try {
+    const { type, amount, expenseDate, notes } = req.body;
+    const expense = await prisma.operatingExpense.create({
+      data: {
+        type,
+        amount: Number(amount),
+        expenseDate: expenseDate ? new Date(expenseDate) : new Date(),
+        notes,
+        recordedById: req.user!.id
+      },
+      include: {
+        recordedBy: { select: { id: true, name: true, role: true } }
+      }
+    });
+    res.status(201).json(expense);
+  } catch (err) {
+    handleApiError(res, err, 400);
+  }
+});
+
+app.delete('/api/expenses/:id', authenticate(['ADMIN', 'FINANCE']), async (req, res) => {
+  try {
+    await prisma.operatingExpense.delete({ where: { id: req.params.id } });
+    res.json({ success: true });
+  } catch (err) {
+    handleApiError(res, err, 400);
+  }
+});
+
 app.get('/api/financial-summary', authenticate(['ADMIN', 'FINANCE']), async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
@@ -1961,11 +2068,20 @@ app.get('/api/financial-summary', authenticate(['ADMIN', 'FINANCE']), async (req
       };
     }
 
+    const expenseDateFilter: any = {};
+    if (startDate && endDate) {
+      expenseDateFilter.expenseDate = {
+        gte: new Date(startDate as string),
+        lte: new Date(endDate as string)
+      };
+    }
+
     // Fetch aggregates instead of full records for orders, procurements, and batches
     const [
       procurementAgg,
       batchAgg,
-      orderAgg
+      orderAgg,
+      expenseAgg
     ] = await Promise.all([
       prisma.procurement.aggregate({
         _sum: { totalAmount: true },
@@ -1988,6 +2104,10 @@ app.get('/api/financial-summary', authenticate(['ADMIN', 'FINANCE']), async (req
           marginProfit: true
         },
         where: { status: 'DELIVERED', ...dateFilter }
+      }),
+      prisma.operatingExpense.aggregate({
+        _sum: { amount: true },
+        where: expenseDateFilter
       })
     ]);
 
@@ -2024,7 +2144,7 @@ app.get('/api/financial-summary', authenticate(['ADMIN', 'FINANCE']), async (req
     // Fetch minimal data for manual outbounds and adjustments
     const adjustments = await prisma.inventoryTransaction.findMany({
       where: { type: 'ADJUSTMENT', ...dateFilter },
-      select: { previousStock: true, newStock: true, product: { select: { costPrice: true, unitPrice: true } } }
+      select: { previousStock: true, newStock: true, unitPrice: true, totalPrice: true, product: { select: { costPrice: true, unitPrice: true } } }
     });
 
     const manualOutbounds = await prisma.inventoryTransaction.findMany({
@@ -2036,7 +2156,7 @@ app.get('/api/financial-summary', authenticate(['ADMIN', 'FINANCE']), async (req
           { NOT: { notes: { startsWith: 'Хүргэлт' } } }
         ]
       },
-      select: { quantity: true, product: { select: { costPrice: true, unitPrice: true } } }
+      select: { quantity: true, unitPrice: true, totalPrice: true, product: { select: { costPrice: true, unitPrice: true } } }
     });
 
     // 1. Inventory Valuation by Material Type
@@ -2136,20 +2256,23 @@ app.get('/api/financial-summary', authenticate(['ADMIN', 'FINANCE']), async (req
     
     // Calculate Manual Outbound Cost (Internal Issue)
     const totalManualOutboundCost = manualOutbounds.reduce((sum, tx) => {
-      const price = Number(tx.product.costPrice) > 0 ? Number(tx.product.costPrice) : Number(tx.product.unitPrice);
-      return sum + (Math.abs(tx.quantity) * price);
+      const price = Number(tx.unitPrice) > 0 ? Number(tx.unitPrice) : (Number(tx.product.costPrice) > 0 ? Number(tx.product.costPrice) : Number(tx.product.unitPrice));
+      const total = Number(tx.totalPrice) > 0 ? Number(tx.totalPrice) : (Math.abs(tx.quantity) * price);
+      return sum + total;
     }, 0);
     
     // Calculate Adjustment impact (negative is loss, positive is gain)
     const totalAdjustmentImpact = adjustments.reduce((sum, adj) => {
-      const price = Number(adj.product.costPrice) > 0 ? Number(adj.product.costPrice) : Number(adj.product.unitPrice);
+      const price = Number(adj.unitPrice) > 0 ? Number(adj.unitPrice) : (Number(adj.product.costPrice) > 0 ? Number(adj.product.costPrice) : Number(adj.product.unitPrice));
+      const total = Number(adj.totalPrice) > 0 ? Number(adj.totalPrice) : (Math.abs(adj.newStock - adj.previousStock) * price);
       const diff = adj.newStock - adj.previousStock;
-      return sum + (diff * price);
+      return sum + (diff < 0 ? -total : total);
     }, 0);
 
     const totalDeliveredRevenue = Number(orderAgg._sum.totalAmount || 0);
     const totalDeliveredBaseCost = Number(orderAgg._sum.baseTotalAmount || 0);
     const totalDeliveredNetProfit = Number(orderAgg._sum.marginProfit || 0);
+    const totalOperatingExpense = Number(expenseAgg._sum.amount || 0);
 
     res.json({
       inventoryValuation,
@@ -2162,6 +2285,7 @@ app.get('/api/financial-summary', authenticate(['ADMIN', 'FINANCE']), async (req
         totalNormalScrapLoss,
         totalAbnormalScrapLoss,
         totalScrapLoss,
+        totalOperatingExpense,
         totalProductionCost,
         totalDeliveredRevenue,
         totalDeliveredBaseCost,
@@ -2235,6 +2359,89 @@ app.delete('/api/order-statuses/:id', authenticate(['ADMIN']), async (req, res) 
     res.json({ success: true });
   } catch (err) {
     handleApiError(res, err, 400);
+  }
+});
+
+app.get('/api/manufacturing-report', authenticate(['ADMIN', 'FINANCE', 'WAREHOUSE_WORKER']), async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const dateFilter: any = {};
+    if (startDate && endDate) {
+      dateFilter.createdAt = {
+        gte: new Date(startDate as string),
+        lte: new Date(endDate as string)
+      };
+    }
+
+    // Fetch all production batches in range with their finished product
+    const batches = await prisma.productionBatch.findMany({
+      where: dateFilter,
+      include: {
+        finishedProduct: true
+      }
+    });
+
+    // Aggregate by finishedProductId
+    const reportMap = new Map<string, any>();
+
+    let totalProducedQuantity = 0;
+    let totalMaterialCost = 0;
+    let totalOverheadCost = 0;
+    let totalScrapCost = 0;
+    let totalProductionCost = 0;
+
+    for (const batch of batches) {
+      if (!batch.finishedProductId || !batch.finishedProduct) continue;
+
+      const pid = batch.finishedProductId;
+      if (!reportMap.has(pid)) {
+        reportMap.set(pid, {
+          productId: pid,
+          productName: batch.finishedProduct.name,
+          sku: batch.finishedProduct.sku,
+          unit: batch.finishedProduct.unit || 'ш',
+          quantityProduced: 0,
+          materialCost: 0,
+          overheadCost: 0,
+          scrapCost: 0,
+          totalCost: 0
+        });
+      }
+
+      const item = reportMap.get(pid);
+      item.quantityProduced += batch.quantityProduced;
+      item.materialCost += Number(batch.totalMaterialCost || 0);
+      item.overheadCost += Number(batch.fixedOverheadCost || 0);
+      const batchScrap = Number(batch.normalScrapAmount || 0) + Number(batch.abnormalScrapAmount || 0);
+      item.scrapCost += batchScrap;
+      item.totalCost += Number(batch.totalProductionCost || 0);
+
+      // Global totals
+      totalProducedQuantity += batch.quantityProduced;
+      totalMaterialCost += Number(batch.totalMaterialCost || 0);
+      totalOverheadCost += Number(batch.fixedOverheadCost || 0);
+      totalScrapCost += batchScrap;
+      totalProductionCost += Number(batch.totalProductionCost || 0);
+    }
+
+    // Calculate unit costs
+    const details = Array.from(reportMap.values()).map(item => ({
+      ...item,
+      avgUnitCost: item.quantityProduced > 0 ? item.totalCost / item.quantityProduced : 0
+    }));
+
+    res.json({
+      summary: {
+        totalProducedQuantity,
+        totalMaterialCost,
+        totalOverheadCost,
+        totalScrapCost,
+        totalProductionCost
+      },
+      details
+    });
+  } catch (err) {
+    handleApiError(res, err);
   }
 });
 

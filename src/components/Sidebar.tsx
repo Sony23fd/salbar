@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building2, Package, ShoppingCart, Truck, ShieldAlert, History, X, FileText, ClipboardList, FileSpreadsheet, Boxes } from 'lucide-react';
+import { Building2, Package, ShoppingCart, Truck, ShieldAlert, History, X, FileText, ClipboardList, FileSpreadsheet, Boxes, Receipt } from 'lucide-react';
 import { User } from '../types/wms';
 
 interface SidebarProps {
@@ -27,8 +27,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
-    ADMIN: ['dashboard', 'tasks', 'inventory', 'materials', 'manufacturing', 'orders', 'deliveries', 'branches', 'categories', 'reports', 'users', 'audit'],
-    FINANCE: ['dashboard', 'inventory', 'materials', 'manufacturing', 'orders', 'reports'],
+    ADMIN: ['dashboard', 'tasks', 'inventory', 'materials', 'manufacturing', 'orders', 'deliveries', 'branches', 'categories', 'reports', 'expenses', 'users', 'audit'],
+    FINANCE: ['dashboard', 'inventory', 'materials', 'manufacturing', 'orders', 'reports', 'expenses'],
     WAREHOUSE_WORKER: ['dashboard', 'tasks', 'inventory', 'materials', 'manufacturing', 'orders', 'reports'],
     DELIVERY_DRIVER: ['dashboard', 'tasks', 'deliveries'],
     PRODUCTION: ['dashboard', 'tasks', 'manufacturing']
@@ -66,6 +66,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       title: 'ҮЙЛДВЭРЛЭЛ & ТАЙЛАН',
       items: [
         { id: 'manufacturing', icon: FileSpreadsheet, label: 'Үйлдвэрлэл & Санхүү', iconColor: 'text-amber-500' },
+        { id: 'expenses', icon: Receipt, label: 'Зардал бүртгэл', iconColor: 'text-indigo-400' },
         { id: 'reports', icon: FileText, label: 'Хөдөлгөөн & Тайлан', iconColor: 'text-emerald-500' },
       ]
     },

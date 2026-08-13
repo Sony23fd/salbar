@@ -143,9 +143,23 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
   });
 
   // Calculate live total price for order creation modal
+  const selectedBranchData = branches.find(b => b.id === selectedBranchId);
+  const profitPercent = selectedBranchData?.profitPercent || 0;
+  const commissionPercent = selectedBranchData?.commissionPercent || 0;
+  const vatPercent = selectedBranchData?.vatPercent || 0;
+
   const liveTotalAmount = orderItems.reduce((sum, item) => {
     const p = products.find((prod) => prod.id === item.productId);
-    return sum + (p ? p.unitPrice * item.quantity : 0);
+    if (!p) return sum;
+    const baseCost = p.costPrice && p.costPrice > 0 ? p.costPrice : p.unitPrice;
+    const profitAmt = baseCost * (profitPercent / 100);
+    const costPlusProfit = baseCost + profitAmt;
+    const commissionAmt = costPlusProfit * (commissionPercent / 100);
+    const costPlusProfitPlusComm = costPlusProfit + commissionAmt;
+    const vatAmt = costPlusProfitPlusComm * (vatPercent / 100);
+    const effectivePrice = costPlusProfitPlusComm + vatAmt;
+    
+    return sum + (effectivePrice * item.quantity);
   }, 0);
 
   const handleAddItemRow = () => {
@@ -704,7 +718,17 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
                 <div className="space-y-2.5">
                   {orderItems.map((item, idx) => {
                     const selectedProd = products.find((p) => p.id === item.productId);
-                    const rowTotal = selectedProd ? selectedProd.unitPrice * item.quantity : 0;
+                    let rowTotal = 0;
+                    if (selectedProd) {
+                      const baseCost = selectedProd.costPrice && selectedProd.costPrice > 0 ? selectedProd.costPrice : selectedProd.unitPrice;
+                      const profitAmt = baseCost * (profitPercent / 100);
+                      const costPlusProfit = baseCost + profitAmt;
+                      const commissionAmt = costPlusProfit * (commissionPercent / 100);
+                      const costPlusProfitPlusComm = costPlusProfit + commissionAmt;
+                      const vatAmt = costPlusProfitPlusComm * (vatPercent / 100);
+                      const effectivePrice = costPlusProfitPlusComm + vatAmt;
+                      rowTotal = effectivePrice * item.quantity;
+                    }
 
                     return (
                       <div key={idx} className="flex items-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
@@ -715,11 +739,21 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
                             className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900"
                             required
                           >
-                            {products.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.name} ({p.sku}) — {p.unitPrice.toLocaleString()}₮ [Үлдэгдэл: {p.stockQuantity}]
-                              </option>
-                            ))}
+                            {products.map((p) => {
+                              const baseCost = p.costPrice && p.costPrice > 0 ? p.costPrice : p.unitPrice;
+                              const profitAmt = baseCost * (profitPercent / 100);
+                              const costPlusProfit = baseCost + profitAmt;
+                              const commissionAmt = costPlusProfit * (commissionPercent / 100);
+                              const costPlusProfitPlusComm = costPlusProfit + commissionAmt;
+                              const vatAmt = costPlusProfitPlusComm * (vatPercent / 100);
+                              const effectivePrice = costPlusProfitPlusComm + vatAmt;
+                              
+                              return (
+                                <option key={p.id} value={p.id}>
+                                  {p.name} ({p.sku}) — {effectivePrice.toLocaleString()}₮ [Үлдэгдэл: {p.stockQuantity}]
+                                </option>
+                              );
+                            })}
                           </select>
                         </div>
 

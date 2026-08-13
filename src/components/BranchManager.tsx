@@ -41,7 +41,9 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [type, setType] = useState<BranchType>('BRANCH');
-  const [marginPercent, setMarginPercent] = useState<number>(0);
+  const [profitPercent, setProfitPercent] = useState<number>(0);
+  const [commissionPercent, setCommissionPercent] = useState<number>(0);
+  const [vatPercent, setVatPercent] = useState<number>(10);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isAdmin = currentUser.role === 'ADMIN';
@@ -65,7 +67,9 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
       setEmail(branch.email);
       setPhone(branch.phone);
       setType(branch.type);
-      setMarginPercent(branch.marginPercent || 0);
+      setProfitPercent(branch.profitPercent || 0);
+      setCommissionPercent(branch.commissionPercent || 0);
+      setVatPercent(branch.vatPercent ?? 10);
     } else {
       setEditingBranch(null);
       setName('');
@@ -74,7 +78,9 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
       setEmail('');
       setPhone('');
       setType('BRANCH');
-      setMarginPercent(0);
+      setProfitPercent(0);
+      setCommissionPercent(0);
+      setVatPercent(10);
     }
     setShowModal(true);
   };
@@ -101,12 +107,12 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
     setIsSubmitting(true);
     try {
       if (editingBranch) {
-        await api.updateBranch(editingBranch.id, { name, location, contactPerson, email, phone, type, marginPercent });
+        await api.updateBranch(editingBranch.id, { name, location, contactPerson, email, phone, type, profitPercent, commissionPercent, vatPercent });
         if (selectedBranch?.id === editingBranch.id) {
             // refresh branch info in drawer will happen through onRefresh
         }
       } else {
-        await api.addBranch({ name, location, contactPerson, email, phone, type, marginPercent });
+        await api.addBranch({ name, location, contactPerson, email, phone, type, profitPercent, commissionPercent, vatPercent });
       }
       onRefresh();
       closeModal();
@@ -274,9 +280,19 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
                   }`}>
                     {selectedBranch.type === 'CUSTOMER' ? 'Харилцагч' : 'Дотоод салбар'}
                   </span>
-                  {(selectedBranch.marginPercent !== undefined && selectedBranch.marginPercent !== 0) && (
+                  {(selectedBranch.profitPercent !== undefined && selectedBranch.profitPercent > 0) && (
                     <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                      Маржин: {selectedBranch.marginPercent > 0 ? '+' : ''}{selectedBranch.marginPercent}%
+                      Ашиг: {selectedBranch.profitPercent}%
+                    </span>
+                  )}
+                  {(selectedBranch.commissionPercent !== undefined && selectedBranch.commissionPercent > 0) && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">
+                      Борл/шимтгэл: {selectedBranch.commissionPercent}%
+                    </span>
+                  )}
+                  {(selectedBranch.vatPercent !== undefined && selectedBranch.vatPercent > 0) && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-800">
+                      НӨАТ: {selectedBranch.vatPercent}%
                     </span>
                   )}
                 </div>
@@ -585,16 +601,42 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
                 </div>
 
                 <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Ашгийн хувь (Margin %)</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Ашгийн хувь (%)</label>
                   <input
                     type="number"
                     step="0.01"
-                    value={marginPercent}
-                    onChange={(e) => setMarginPercent(parseFloat(e.target.value) || 0)}
-                    placeholder="Жишээ нь: 15 эсвэл -10"
+                    value={profitPercent}
+                    onChange={(e) => setProfitPercent(parseFloat(e.target.value) || 0)}
+                    placeholder="Жишээ нь: 15"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-emerald-500 font-mono"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">Өртгөөс нэмэгдэх ашиг</p>
+                </div>
+
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Борлуулалтын хувь (%)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={commissionPercent}
+                    onChange={(e) => setCommissionPercent(parseFloat(e.target.value) || 0)}
+                    placeholder="Жишээ нь: 5"
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-mono"
                   />
-                  <p className="text-[10px] text-slate-500 mt-1">Үндсэн үнэн дээр нэмэгдэх (эсвэл хасагдах) хувь</p>
+                  <p className="text-[10px] text-slate-500 mt-1">Борлуулалтын шимтгэл</p>
+                </div>
+
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">НӨАТ (%)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={vatPercent}
+                    onChange={(e) => setVatPercent(parseFloat(e.target.value) || 0)}
+                    placeholder="Жишээ нь: 10"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-slate-500 font-mono"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">Стандарт: 10%</p>
                 </div>
 
                 <div className="col-span-2 sm:col-span-1">

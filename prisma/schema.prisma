@@ -75,6 +75,7 @@ model User {
   deliveredOrders      Order[]                @relation("OrderDriver")
   historyLogs          OrderHistory[]         @relation("HistoryUser")
   inventoryTransactions InventoryTransaction[]
+  recordedExpenses     OperatingExpense[]
   
   createdTasks         Task[]                 @relation("TaskCreator")
   assignedTasks        Task[]                 @relation("TaskAssignee")
@@ -100,6 +101,9 @@ model Branch {
   type           BranchType @default(BRANCH)
   isActive       Boolean    @default(true)
   marginPercent  Float      @default(0)
+  profitPercent  Float      @default(0)
+  commissionPercent Float   @default(0)
+  vatPercent     Float      @default(0)
   lastActivityAt DateTime  @default(now())
   orders         Order[]
   inventory      BranchInventory[]
@@ -186,6 +190,8 @@ model InventoryTransaction {
   newStock      Float
   previousSecondaryStock Float?
   newSecondaryStock      Float?
+  unitPrice     Float?          // Stores the exact unit price/cost at the time of transaction
+  totalPrice    Float?          // Stores the exact total price/cost at the time of transaction
   userId        String
   user          User            @relation(fields: [userId], references: [id])
   referenceId   String?         // Optional reference like Order Number
@@ -209,6 +215,9 @@ model Order {
   status        String         @default("PENDING")
   totalAmount   Decimal        @db.Decimal(10, 2)
   baseTotalAmount Decimal      @db.Decimal(10, 2) @default(0)
+  profitTotalAmount Decimal    @db.Decimal(10, 2) @default(0)
+  commissionTotalAmount Decimal @db.Decimal(10, 2) @default(0)
+  vatTotalAmount Decimal       @db.Decimal(10, 2) @default(0)
   marginProfit  Decimal        @db.Decimal(10, 2) @default(0)
   createdById   String
   createdBy     User           @relation("OrderCreator", fields: [createdById], references: [id])
@@ -496,4 +505,23 @@ model ProductionBatchItem {
   totalPrice        Decimal         @db.Decimal(10, 2)
 
   @@map("production_batch_items")
+}
+
+// ------------------------------------------
+// Operating Expenses (Зардал)
+// ------------------------------------------
+
+model OperatingExpense {
+  id            String    @id @default(cuid())
+  type          String    // e.g. Цалин, Түрээс, Урсгал зардал, Маркетинг, Бусад
+  amount        Decimal   @db.Decimal(10, 2)
+  expenseDate   DateTime
+  notes         String?
+  recordedById  String
+  recordedBy    User      @relation(fields: [recordedById], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([expenseDate])
+  @@map("operating_expenses")
 }

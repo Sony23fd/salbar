@@ -21,6 +21,8 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) =
   
   // Financial Summary State
   const [financialData, setFinancialData] = useState<any>(null);
+  const [manufacturingReport, setManufacturingReport] = useState<any>(null);
+  const [activeReportTab, setActiveReportTab] = useState<'TRANSACTIONS' | 'MANUFACTURING'>('TRANSACTIONS');
   const [dateRange, setDateRange] = useState<'today' | '7days' | '30days' | 'thisMonth' | 'lastMonth' | 'thisYear' | 'all' | 'custom'>('7days');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
@@ -66,7 +68,7 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) =
       loadData();
     }, 300);
     return () => clearTimeout(timer);
-  }, [startDate, endDate, page, typeFilter, searchQuery]);
+  }, [startDate, endDate, page, typeFilter, searchQuery, activeReportTab]);
 
   const loadData = async () => {
     try {
@@ -81,6 +83,13 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) =
       } catch (err: any) {
         // Finance summary might be restricted by role (e.g., WAREHOUSE_WORKER)
         setFinancialData(null);
+      }
+      
+      try {
+        const res = await api.get(`/manufacturing-report?startDate=${startDate || ''}&endDate=${endDate || ''}`);
+        setManufacturingReport(res.data);
+      } catch(err) {
+        setManufacturingReport(null);
       }
     } catch (err) {
       console.error('Failed to load transactions data', err);
@@ -189,64 +198,82 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) =
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in duration-300">
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
             <div className="flex items-center gap-2 text-slate-500 font-bold text-[10px] uppercase tracking-wider">
-              <ArrowDownRight className="w-4 h-4 text-blue-500" /> Татан авалт (Зардал)
+              <ArrowDownRight className="w-4 h-4 text-emerald-500" /> Нийт Борлуулалт
             </div>
             <div className="text-2xl font-black text-slate-900 font-mono">
-              ₮{(summary.totalProcurementAmount || 0).toLocaleString()}
+              ₮{(summary.totalDeliveredRevenue || 0).toLocaleString()}
             </div>
+            <p className="text-[10px] text-slate-500">Бүх хүргэгдсэн захиалгын дүн</p>
           </div>
 
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
             <div className="flex items-center gap-2 text-slate-500 font-bold text-[10px] uppercase tracking-wider">
-              <Boxes className="w-4 h-4 text-amber-500" /> Үйлдвэрлэл & Дотоод Зарлага
+              <TrendingUp className="w-4 h-4 text-blue-500" /> Борлуулалтын Ашиг (Gross Profit)
             </div>
-            <div className="text-2xl font-black text-slate-900 font-mono flex items-baseline gap-2">
-              ₮{((summary.totalMaterialsIssuedCost || 0) + (summary.totalManualOutboundCost || 0)).toLocaleString()}
+            <div className="text-2xl font-black text-blue-600 font-mono">
+              ₮{(summary.totalDeliveredNetProfit || 0).toLocaleString()}
             </div>
-            <p className="text-[10px] text-slate-500 font-medium">
-              Автоматаар (Орц): ₮{(summary.totalMaterialsIssuedCost || 0).toLocaleString()} <span className="mx-1 opacity-50">|</span> Гараар (Дотоод): ₮{(summary.totalManualOutboundCost || 0).toLocaleString()}
+            <p className="text-[10px] text-slate-500">
+              Борлуулалт - Барааны өртөг
             </p>
           </div>
 
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
             <div className="flex items-center gap-2 text-slate-500 font-bold text-[10px] uppercase tracking-wider">
-              <AlertTriangle className="w-4 h-4 text-red-500" /> Нийт Хорогдол & Тохируулга
+              <AlertTriangle className="w-4 h-4 text-amber-500" /> Тогтмол Зардал & Хорогдол
             </div>
-            <div className="text-2xl font-black text-red-600 font-mono">
-              ₮{((summary.totalScrapLoss || 0) - (summary.totalAdjustmentImpact || 0)).toLocaleString()}
+            <div className="text-2xl font-black text-amber-600 font-mono">
+              ₮{((summary.totalOperatingExpense || 0) + (summary.totalScrapLoss || 0) - (summary.totalAdjustmentImpact || 0)).toLocaleString()}
             </div>
-            <p className="text-[10px] text-slate-500">Үйлдвэрийн хорогдол болон устгал/дутагдал</p>
+            <p className="text-[10px] text-slate-500">Зардал: ₮{(summary.totalOperatingExpense || 0).toLocaleString()} <span className="mx-1">|</span> Хорогдол: ₮{((summary.totalScrapLoss || 0) - (summary.totalAdjustmentImpact || 0)).toLocaleString()}</p>
           </div>
 
           <div className="bg-gradient-to-br from-emerald-500 to-emerald-700 p-5 rounded-2xl shadow-sm space-y-3 text-white">
             <div className="flex items-center gap-2 text-emerald-100 font-bold text-[10px] uppercase tracking-wider">
-              <TrendingUp className="w-4 h-4 text-emerald-100" /> Борлуулалт & Цэвэр Ашиг
+              <TrendingUp className="w-4 h-4 text-emerald-100" /> Бодит Цэвэр Ашиг
             </div>
             <div className="text-2xl font-black font-mono">
-              ₮{(summary.totalDeliveredNetProfit || 0).toLocaleString()}
+              ₮{((summary.totalDeliveredNetProfit || 0) - ((summary.totalScrapLoss || 0) - (summary.totalAdjustmentImpact || 0)) - (summary.totalOperatingExpense || 0)).toLocaleString()}
             </div>
-            <p className="text-[10px] text-emerald-100">Орлого: ₮{(summary.totalDeliveredRevenue || 0).toLocaleString()}</p>
+            <p className="text-[10px] text-emerald-100">Борлуулалтын ашиг - Зардал & Хорогдол</p>
           </div>
         </div>
       )}
 
-      {/* INVENTORY TRANSACTIONS TABLE */}
-      <div className="space-y-4">
-        <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 px-1">
-          <FileText className="w-4 h-4 text-slate-500" /> Агуулахын дэлгэрэнгүй гүйлгээ
-        </h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="relative md:col-span-2">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Барааны нэр, SKU эсвэл тайлбараар хайх..."
+      {/* TABS */}
+      <div className="flex items-center gap-6 border-b border-slate-200 px-1">
+        <button
+          onClick={() => setActiveReportTab('TRANSACTIONS')}
+          className={`pb-3 text-sm font-bold border-b-2 transition-colors ${
+            activeReportTab === 'TRANSACTIONS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+          }`}
+        >
+          Агуулахын Хөдөлгөөн
+        </button>
+        <button
+          onClick={() => setActiveReportTab('MANUFACTURING')}
+          className={`pb-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${
+            activeReportTab === 'MANUFACTURING' ? 'border-amber-500 text-amber-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+          }`}
+        >
+          Үйлдвэрлэлийн Тайлан
+        </button>
+      </div>
+
+      {/* INVENTORY TRANSACTIONS TAB */}
+      {activeReportTab === 'TRANSACTIONS' && (
+        <div className="space-y-4 animate-in fade-in">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="relative md:col-span-2">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Барааны нэр, SKU эсвэл тайлбараар хайх..."
               className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
             />
           </div>
@@ -330,10 +357,10 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) =
                         )}
                       </td>
                       <td className="p-4 text-right text-slate-500 font-mono font-medium">
-                        {t.product ? ((t.product.costPrice && t.product.costPrice > 0) ? t.product.costPrice : (t.product.unitPrice || 0)).toLocaleString() + '₮' : '-'}
+                        {t.unitPrice ? t.unitPrice.toLocaleString() + '₮' : (t.product ? ((t.product.costPrice && t.product.costPrice > 0) ? t.product.costPrice : (t.product.unitPrice || 0)).toLocaleString() + '₮' : '-')}
                       </td>
                       <td className="p-4 text-right text-slate-900 font-mono font-bold">
-                        {t.product ? (Math.abs(t.quantity) * ((t.product.costPrice && t.product.costPrice > 0) ? t.product.costPrice : (t.product.unitPrice || 0))).toLocaleString() + '₮' : '-'}
+                        {t.totalPrice ? t.totalPrice.toLocaleString() + '₮' : (t.product ? (Math.abs(t.quantity) * ((t.product.costPrice && t.product.costPrice > 0) ? t.product.costPrice : (t.product.unitPrice || 0))).toLocaleString() + '₮' : '-')}
                       </td>
                       <td className="p-4">
                         <div className="font-semibold text-slate-900">{t.user?.name}</div>
@@ -370,7 +397,85 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) =
             </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* MANUFACTURING REPORT TAB */}
+      {activeReportTab === 'MANUFACTURING' && manufacturingReport && (
+        <div className="space-y-6 animate-in fade-in">
+          {/* Manufacturing Summary */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl">
+              <div className="text-[10px] uppercase font-bold text-slate-500 mb-1">Нийт үйлдвэрлэсэн</div>
+              <div className="text-xl font-black text-slate-900 font-mono">{(manufacturingReport.summary.totalProducedQuantity || 0).toLocaleString()} ш</div>
+            </div>
+            <div className="bg-amber-50/50 border border-amber-200/50 p-4 rounded-2xl">
+              <div className="text-[10px] uppercase font-bold text-amber-600 mb-1">Орцын зардал</div>
+              <div className="text-xl font-black text-amber-700 font-mono">₮{(manufacturingReport.summary.totalMaterialCost || 0).toLocaleString()}</div>
+            </div>
+            <div className="bg-red-50/50 border border-red-200/50 p-4 rounded-2xl">
+              <div className="text-[10px] uppercase font-bold text-red-600 mb-1">Нийт хорогдол</div>
+              <div className="text-xl font-black text-red-700 font-mono">₮{(manufacturingReport.summary.totalScrapCost || 0).toLocaleString()}</div>
+            </div>
+            <div className="bg-blue-50/50 border border-blue-200/50 p-4 rounded-2xl">
+              <div className="text-[10px] uppercase font-bold text-blue-600 mb-1">Үйлдвэрлэлийн өртөг</div>
+              <div className="text-xl font-black text-blue-700 font-mono">₮{(manufacturingReport.summary.totalProductionCost || 0).toLocaleString()}</div>
+            </div>
+          </div>
+
+          {/* Manufacturing Detailed Table */}
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-600 uppercase font-bold text-[10px] tracking-wider border-b border-slate-200">
+                  <tr>
+                    <th className="p-4">Бүтээгдэхүүн</th>
+                    <th className="p-4 text-right">Үйлдвэрлэсэн (ш)</th>
+                    <th className="p-4 text-right">Нэгжийн дундаж өртөг</th>
+                    <th className="p-4 text-right">Орцын зардал</th>
+                    <th className="p-4 text-right">Хорогдол</th>
+                    <th className="p-4 text-right">Нэмэлт зардал</th>
+                    <th className="p-4 text-right">Нийт Өртөг</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {manufacturingReport.details.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-slate-500 font-medium">Сонгосон хугацаанд үйлдвэрлэл бүртгэгдээгүй байна</td>
+                    </tr>
+                  ) : (
+                    manufacturingReport.details.sort((a: any, b: any) => b.totalCost - a.totalCost).map((item: any) => (
+                      <tr key={item.productId} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-4">
+                          <div className="font-bold text-slate-900">{item.productName}</div>
+                          <div className="text-[10px] text-slate-500 font-mono">{item.sku}</div>
+                        </td>
+                        <td className="p-4 text-right font-black text-slate-700 font-mono">
+                          {item.quantityProduced.toLocaleString()}
+                        </td>
+                        <td className="p-4 text-right font-bold text-blue-700 font-mono">
+                          ₮{item.avgUnitCost.toLocaleString()}
+                        </td>
+                        <td className="p-4 text-right text-slate-600 font-mono">
+                          ₮{item.materialCost.toLocaleString()}
+                        </td>
+                        <td className="p-4 text-right text-red-600 font-mono">
+                          ₮{item.scrapCost.toLocaleString()}
+                        </td>
+                        <td className="p-4 text-right text-slate-600 font-mono">
+                          ₮{item.overheadCost.toLocaleString()}
+                        </td>
+                        <td className="p-4 text-right font-black text-slate-900 font-mono">
+                          ₮{item.totalCost.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
