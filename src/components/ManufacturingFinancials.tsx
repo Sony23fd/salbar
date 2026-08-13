@@ -176,8 +176,8 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
       try {
         const [bData, procData, batchData] = await Promise.all([
           api.getBOMs(),
-          api.getProcurements(),
-          api.getProductionBatches()
+          api.getProcurements(startDate, endDate),
+          api.getProductionBatches(startDate, endDate)
         ]);
         setBoms(bData);
         setProcurements(procData);

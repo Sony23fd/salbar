@@ -296,6 +296,18 @@ export const api = {
     return res.json();
   },
 
+  async getPaginatedTransactions(page: number, limit: number, search?: string, type?: string, startDate?: string, endDate?: string): Promise<{ data: any[], total: number, page: number, totalPages: number }> {
+    const params = new URLSearchParams({ page: page.toString(), limit: limit.toString() });
+    if (search) params.append('search', search);
+    if (type && type !== 'ALL') params.append('type', type);
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    
+    const res = await fetch(`${API_BASE}/reports/transactions/paginated?${params.toString()}`, { headers: getHeaders() });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
   async getInactiveBranches(thresholdDays = 7): Promise<any[]> {
     const branches = await this.getBranches();
     const nowTime = new Date().getTime();
@@ -420,8 +432,13 @@ export const api = {
     return res.json();
   },
 
-  async getProcurements(): Promise<any[]> {
-    const res = await fetch(`${API_BASE}/procurements`, { headers: getHeaders() });
+  async getProcurements(startDate?: string, endDate?: string): Promise<any[]> {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    
+    const query = params.toString() ? `?${params.toString()}` : '';
+    const res = await fetch(`${API_BASE}/procurements${query}`, { headers: getHeaders() });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },
@@ -436,8 +453,13 @@ export const api = {
     return res.json();
   },
 
-  async getProductionBatches(): Promise<any[]> {
-    const res = await fetch(`${API_BASE}/production-batches`, { headers: getHeaders() });
+  async getProductionBatches(startDate?: string, endDate?: string): Promise<any[]> {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    
+    const query = params.toString() ? `?${params.toString()}` : '';
+    const res = await fetch(`${API_BASE}/production-batches${query}`, { headers: getHeaders() });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },

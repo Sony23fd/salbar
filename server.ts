@@ -664,9 +664,30 @@ app.get('/api/reports/transactions/paginated', authenticate(['ADMIN', 'WAREHOUSE
     const limit = parseInt(req.query.limit as string) || 50;
     const skip = (page - 1) * limit;
 
+    const { search, type, startDate, endDate } = req.query;
+    
+    const where: any = {};
+    if (type && type !== 'ALL') {
+      where.type = type;
+    }
+    if (startDate && endDate) {
+      where.createdAt = {
+        gte: new Date(startDate as string),
+        lte: new Date(endDate as string)
+      };
+    }
+    if (search) {
+      where.OR = [
+        { product: { name: { contains: search as string, mode: 'insensitive' } } },
+        { product: { sku: { contains: search as string, mode: 'insensitive' } } },
+        { notes: { contains: search as string, mode: 'insensitive' } }
+      ];
+    }
+
     const [total, transactions] = await Promise.all([
-      prisma.inventoryTransaction.count(),
+      prisma.inventoryTransaction.count({ where }),
       prisma.inventoryTransaction.findMany({
+        where,
         skip,
         take: limit,
         include: {
@@ -1431,7 +1452,16 @@ app.post('/api/livestock-ledgers', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'F
 
 app.get('/api/procurements', authenticate(['ADMIN', 'FINANCE', 'WAREHOUSE_WORKER']), async (req, res) => {
   try {
+    const { startDate, endDate } = req.query;
+    const where: any = {};
+    if (startDate && endDate) {
+      where.createdAt = {
+        gte: new Date(startDate as string),
+        lte: new Date(endDate as string)
+      };
+    }
     const procurements = await prisma.procurement.findMany({
+      where,
       include: {
         items: { include: { product: true } }
       },
@@ -1560,7 +1590,16 @@ app.post('/api/procurements', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async
 
 app.get('/api/production-batches', authenticate(['ADMIN', 'FINANCE', 'WAREHOUSE_WORKER']), async (req, res) => {
   try {
+    const { startDate, endDate } = req.query;
+    const where: any = {};
+    if (startDate && endDate) {
+      where.createdAt = {
+        gte: new Date(startDate as string),
+        lte: new Date(endDate as string)
+      };
+    }
     const batches = await prisma.productionBatch.findMany({
+      where,
       include: {
         finishedProduct: true,
         items: { include: { ingredient: true } }
@@ -1873,35 +1912,70 @@ app.get('/api/financial-summary', authenticate(['ADMIN', 'FINANCE']), async (req
       };
     }
 
+    // Fetch aggregates instead of full records for orders, procurements, and batches
+    const [
+      procurementAgg,
+      batchAgg,
+      orderAgg
+    ] = await Promise.all([
+      prisma.procurement.aggregate({
+        _sum: { totalAmount: true },
+        where: dateFilter
+      }),
+      prisma.productionBatch.aggregate({
+        _sum: {
+          totalMaterialCost: true,
+          fixedOverheadCost: true,
+          normalScrapAmount: true,
+          abnormalScrapAmount: true,
+          totalProductionCost: true
+        },
+        where: dateFilter
+      }),
+      prisma.order.aggregate({
+        _sum: {
+          totalAmount: true,
+          baseTotalAmount: true,
+          marginProfit: true
+        },
+        where: { status: 'DELIVERED', ...dateFilter }
+      })
+    ]);
+
+    // For products, only select needed fields for valuation and analysis to reduce payload size
     const products = await prisma.product.findMany({
       where: { isActive: true },
-      include: { category: true }
+      select: {
+        id: true,
+        sku: true,
+        name: true,
+        unit: true,
+        materialType: true,
+        stockQuantity: true,
+        costPrice: true,
+        unitPrice: true,
+      }
     });
 
+    const finishedGoodsIds = products.filter(p => p.materialType === 'FINISHED_GOOD' || !p.materialType).map(p => p.id);
+
+    // Only fetch BOMs for finished goods
     const boms = await prisma.bOM.findMany({
+      where: { finishedProductId: { in: finishedGoodsIds } },
       include: {
-        items: { include: { ingredient: true } }
+        items: {
+          include: {
+            ingredient: { select: { id: true, name: true, sku: true, unit: true, materialType: true, costPrice: true, unitPrice: true } }
+          }
+        }
       }
     });
     const bomMap = new Map(boms.map(b => [b.finishedProductId, b]));
 
-    const procurements = await prisma.procurement.findMany({
-      where: dateFilter,
-      include: { items: true }
-    });
-
-    const productionBatches = await prisma.productionBatch.findMany({
-      where: dateFilter,
-      include: { items: true }
-    });
-
-    const deliveredOrders = await prisma.order.findMany({
-      where: { status: 'DELIVERED', ...dateFilter }
-    });
-
+    // Fetch minimal data for manual outbounds and adjustments
     const adjustments = await prisma.inventoryTransaction.findMany({
       where: { type: 'ADJUSTMENT', ...dateFilter },
-      include: { product: true }
+      select: { previousStock: true, newStock: true, product: { select: { costPrice: true, unitPrice: true } } }
     });
 
     const manualOutbounds = await prisma.inventoryTransaction.findMany({
@@ -1913,7 +1987,7 @@ app.get('/api/financial-summary', authenticate(['ADMIN', 'FINANCE']), async (req
           { NOT: { notes: { startsWith: 'Хүргэлт' } } }
         ]
       },
-      include: { product: true }
+      select: { quantity: true, product: { select: { costPrice: true, unitPrice: true } } }
     });
 
     // 1. Inventory Valuation by Material Type
@@ -2003,11 +2077,13 @@ app.get('/api/financial-summary', authenticate(['ADMIN', 'FINANCE']), async (req
       });
 
     // 3. Consolidated Totals
-    const totalProcurementAmount = procurements.reduce((sum, pr) => sum + Number(pr.totalAmount), 0);
-    const totalMaterialsIssuedCost = productionBatches.reduce((sum, pb) => sum + Number(pb.totalMaterialCost), 0);
-    const totalFixedOverheadCost = productionBatches.reduce((sum, pb) => sum + Number(pb.fixedOverheadCost), 0);
-    const totalNormalScrapLoss = productionBatches.reduce((sum, pb) => sum + Number(pb.normalScrapAmount), 0);
-    const totalAbnormalScrapLoss = productionBatches.reduce((sum, pb) => sum + Number(pb.abnormalScrapAmount), 0);
+    const totalProcurementAmount = Number(procurementAgg._sum.totalAmount || 0);
+    const totalMaterialsIssuedCost = Number(batchAgg._sum.totalMaterialCost || 0);
+    const totalFixedOverheadCost = Number(batchAgg._sum.fixedOverheadCost || 0);
+    const totalNormalScrapLoss = Number(batchAgg._sum.normalScrapAmount || 0);
+    const totalAbnormalScrapLoss = Number(batchAgg._sum.abnormalScrapAmount || 0);
+    const totalScrapLoss = totalNormalScrapLoss + totalAbnormalScrapLoss;
+    const totalProductionCost = Number(batchAgg._sum.totalProductionCost || 0);
     
     // Calculate Manual Outbound Cost (Internal Issue)
     const totalManualOutboundCost = manualOutbounds.reduce((sum, tx) => {
@@ -2022,12 +2098,9 @@ app.get('/api/financial-summary', authenticate(['ADMIN', 'FINANCE']), async (req
       return sum + (diff * price);
     }, 0);
 
-    const totalScrapLoss = totalNormalScrapLoss + totalAbnormalScrapLoss;
-    const totalProductionCost = productionBatches.reduce((sum, pb) => sum + Number(pb.totalProductionCost), 0);
-
-    const totalDeliveredRevenue = deliveredOrders.reduce((sum, o) => sum + Number(o.totalAmount), 0);
-    const totalDeliveredBaseCost = deliveredOrders.reduce((sum, o) => sum + Number(o.baseTotalAmount || 0), 0);
-    const totalDeliveredNetProfit = deliveredOrders.reduce((sum, o) => sum + Number(o.marginProfit || 0), 0);
+    const totalDeliveredRevenue = Number(orderAgg._sum.totalAmount || 0);
+    const totalDeliveredBaseCost = Number(orderAgg._sum.baseTotalAmount || 0);
+    const totalDeliveredNetProfit = Number(orderAgg._sum.marginProfit || 0);
 
     res.json({
       inventoryValuation,

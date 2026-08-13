@@ -14,6 +14,11 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) =
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('ALL');
   
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const limit = 50;
+  
   // Financial Summary State
   const [financialData, setFinancialData] = useState<any>(null);
   const [dateRange, setDateRange] = useState<'today' | '7days' | '30days' | 'thisMonth' | 'lastMonth' | 'thisYear' | 'all' | 'custom'>('all');
@@ -56,14 +61,19 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) =
   }, [dateRange, customStart, customEnd]);
 
   useEffect(() => {
-    loadData();
-  }, [startDate, endDate]);
+    // Debounce loadData when search query changes
+    const timer = setTimeout(() => {
+      loadData();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [startDate, endDate, page, typeFilter, searchQuery]);
 
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const txData = await db.getTransactions();
-      setTransactions(txData);
+      const txRes = await api.getPaginatedTransactions(page, limit, searchQuery, typeFilter, startDate, endDate);
+      setTransactions(txRes.data);
+      setTotalPages(txRes.totalPages || 1);
       
       try {
         const finData = await api.getFinancialSummary(startDate, endDate);
@@ -79,21 +89,7 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) =
     }
   };
 
-  const filteredTransactions = transactions.filter(t => {
-    const matchesSearch = t.product?.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          t.product?.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          t.notes?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = typeFilter === 'ALL' || t.type === typeFilter;
-    
-    // Apply Date Range filter to transactions in UI as well
-    let matchesDate = true;
-    if (startDate && endDate) {
-      const txDate = new Date(t.createdAt).getTime();
-      matchesDate = txDate >= new Date(startDate).getTime() && txDate <= new Date(endDate).getTime();
-    }
-    
-    return matchesSearch && matchesType && matchesDate;
-  });
+  // filteredTransactions logic removed since it's now handled by backend
 
   const getTransactionIcon = (type: string) => {
     if (type === 'INBOUND') return <ArrowDownRight className="w-4 h-4 text-emerald-600" />;
@@ -246,7 +242,10 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) =
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setPage(1);
+              }}
               placeholder="Барааны нэр, SKU эсвэл тайлбараар хайх..."
               className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
             />
@@ -254,7 +253,10 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) =
           <div>
             <select
               value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
+              onChange={(e) => {
+                setTypeFilter(e.target.value);
+                setPage(1);
+              }}
               className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-xs font-medium"
             >
               <option value="ALL">Бүх гүйлгээ</option>
@@ -287,12 +289,12 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) =
                   <tr>
                     <td colSpan={10} className="p-8 text-center text-slate-500">Уншиж байна...</td>
                   </tr>
-                ) : filteredTransactions.length === 0 ? (
+                ) : transactions.length === 0 ? (
                   <tr>
                     <td colSpan={10} className="p-8 text-center text-slate-500">Гүйлгээ олдсонгүй. (Шүүлтүүрээ шалгана уу)</td>
                   </tr>
                 ) : (
-                  filteredTransactions.map((t) => (
+                  transactions.map((t) => (
                     <tr key={t.id} className="hover:bg-slate-50 transition-colors">
                       <td className="p-4 text-slate-500">
                         {new Date(t.createdAt).toLocaleString('mn-MN')}
@@ -336,6 +338,27 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) =
                 )}
               </tbody>
             </table>
+          </div>
+          <div className="p-4 border-t border-slate-100 flex items-center justify-between">
+            <div className="text-xs text-slate-500">
+              Хуудас {page} / {totalPages}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg bg-white border border-slate-200 text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
+              >
+                Өмнөх
+              </button>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg bg-white border border-slate-200 text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
+              >
+                Дараах
+              </button>
+            </div>
           </div>
         </div>
       </div>
