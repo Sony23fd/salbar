@@ -147,6 +147,7 @@ model Product {
   unit          String       @default("ш")
   materialType  MaterialType @default(FINISHED_GOOD)
   stockQuantity Int          @default(0)
+  stockSecondaryQuantity Int @default(0)
   initialStock  Int          @default(0) // Эхний үлдэгдэл
   minStockLevel Int          @default(5)
   isActive      Boolean      @default(true)
@@ -179,8 +180,11 @@ model InventoryTransaction {
   product       Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
   type          TransactionType
   quantity      Int
+  secondaryQuantity Int?
   previousStock Int
   newStock      Int
+  previousSecondaryStock Int?
+  newSecondaryStock      Int?
   userId        String
   user          User            @relation(fields: [userId], references: [id])
   referenceId   String?         // Optional reference like Order Number
@@ -440,6 +444,7 @@ model ProcurementItem {
   productId     String
   product       Product     @relation(fields: [productId], references: [id])
   quantity      Float
+  secondaryQuantity Int?
   unitPrice     Decimal     @db.Decimal(10, 2)
   totalPrice    Decimal     @db.Decimal(10, 2)
   expiryDate    DateTime?

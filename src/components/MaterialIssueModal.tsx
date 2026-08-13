@@ -15,7 +15,7 @@ export const MaterialIssueModal: React.FC<Props> = ({ materials, onClose, onSucc
   const [notes, setNotes] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   
-  const [selectedItems, setSelectedItems] = useState<{ product: Product; quantity: number }[]>([]);
+  const [selectedItems, setSelectedItems] = useState<{ product: Product; quantity: number; secondaryQuantity?: number }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [expiringBatches, setExpiringBatches] = useState<any[]>([]);
@@ -36,7 +36,7 @@ export const MaterialIssueModal: React.FC<Props> = ({ materials, onClose, onSucc
     }
     const existing = selectedItems.find(i => i.product.id === product.id);
     if (!existing) {
-      setSelectedItems([...selectedItems, { product, quantity: 1 }]);
+      setSelectedItems([...selectedItems, { product, quantity: 1, secondaryQuantity: undefined }]);
       setSearchQuery('');
     }
   };
@@ -54,6 +54,21 @@ export const MaterialIssueModal: React.FC<Props> = ({ materials, onClose, onSucc
           return { ...item, quantity: item.product.stockQuantity };
         }
         return { ...item, quantity: isNaN(num) ? 0 : num };
+      }
+      }
+      return item;
+    }));
+  };
+
+  const handleSecondaryQuantityChange = (productId: string, val: string) => {
+    const num = parseFloat(val);
+    setSelectedItems(selectedItems.map(item => {
+      if (item.product.id === productId) {
+        if (!isNaN(num) && item.product.stockSecondaryQuantity && num > item.product.stockSecondaryQuantity) {
+          toast.error(`${item.product.name} ширхэгийн үлдэгдэл хүрэхгүй байна!`);
+          return { ...item, secondaryQuantity: item.product.stockSecondaryQuantity };
+        }
+        return { ...item, secondaryQuantity: isNaN(num) ? undefined : num };
       }
       return item;
     }));
@@ -75,7 +90,8 @@ export const MaterialIssueModal: React.FC<Props> = ({ materials, onClose, onSucc
 
     const itemsPayload = selectedItems.map(i => ({
       productId: i.product.id,
-      quantity: i.quantity
+      quantity: i.quantity,
+      secondaryQuantity: i.secondaryQuantity
     }));
 
     try {
@@ -141,7 +157,12 @@ export const MaterialIssueModal: React.FC<Props> = ({ materials, onClose, onSucc
                         <div className="text-xs text-slate-500 font-mono mt-0.5">{m.sku}</div>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-mono font-bold text-slate-900">{m.stockQuantity} {m.unit}</div>
+                        <div className="text-sm font-mono font-bold text-slate-900">
+                          {m.stockQuantity} {m.unit}
+                          {m.stockSecondaryQuantity !== undefined && m.stockSecondaryQuantity > 0 && (
+                            <span className="text-xs text-slate-500 ml-1">/ {m.stockSecondaryQuantity} ш</span>
+                          )}
+                        </div>
                         <div className="text-[10px] text-slate-500">Үлдэгдэл</div>
                       </div>
                     </div>
@@ -214,25 +235,41 @@ export const MaterialIssueModal: React.FC<Props> = ({ materials, onClose, onSucc
                           <div className="text-[10px] text-slate-500">Үлдэгдэл: {item.product.stockQuantity} {item.product.unit}</div>
                         </div>
                         
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            min="0.1"
-                            step="any"
-                            max={item.product.stockQuantity}
-                            value={item.quantity || ''}
-                            onChange={e => handleQuantityChange(item.product.id, e.target.value)}
-                            className="w-20 border border-slate-300 rounded-lg px-2 py-1.5 text-right font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                            required
-                          />
-                          <span className="text-xs text-slate-500 w-4">{item.product.unit}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItem(item.product.id)}
-                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-1"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                        <div className="flex flex-col gap-2 items-end">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              min="0.1"
+                              step="any"
+                              max={item.product.stockQuantity}
+                              value={item.quantity || ''}
+                              onChange={e => handleQuantityChange(item.product.id, e.target.value)}
+                              className="w-20 border border-slate-300 rounded-lg px-2 py-1.5 text-right font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                              required
+                            />
+                            <span className="text-xs text-slate-500 w-4">{item.product.unit}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveItem(item.product.id)}
+                              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-1"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                          {item.product.unit?.toLowerCase() === 'кг' && (
+                            <div className="flex items-center gap-2 animate-in fade-in zoom-in-95 duration-200">
+                              <input
+                                type="number"
+                                min="0"
+                                max={item.product.stockSecondaryQuantity || 9999}
+                                value={item.secondaryQuantity || ''}
+                                onChange={e => handleSecondaryQuantityChange(item.product.id, e.target.value)}
+                                placeholder="Ширхэг"
+                                className="w-20 border border-indigo-200 bg-indigo-50 rounded-lg px-2 py-1.5 text-right font-mono text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                              />
+                              <span className="text-xs text-indigo-500 w-4 mr-8">ш</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}

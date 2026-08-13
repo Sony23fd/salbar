@@ -559,17 +559,23 @@ app.put('/api/products/:id/reactivate', authenticate(['ADMIN']), async (req, res
 });
 
 app.post('/api/products/replenish', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE']), async (req, res) => {
-  const { productId, quantityToAdd, userId, notes, isAdjustment } = req.body;
+  const { productId, quantityToAdd, secondaryQuantityToAdd, userId, notes, isAdjustment } = req.body;
   try {
     const updated = await prisma.$transaction(async (tx) => {
       const product = await tx.product.findUnique({ where: { id: productId } });
       if (!product) throw new Error('Product not found');
       
       const newStock = product.stockQuantity + quantityToAdd;
+      const newSecondaryStock = secondaryQuantityToAdd !== undefined
+          ? (product.stockSecondaryQuantity || 0) + secondaryQuantityToAdd
+          : undefined;
       
       const updatedProduct = await tx.product.update({
         where: { id: productId },
-        data: { stockQuantity: newStock },
+        data: { 
+          stockQuantity: newStock,
+          ...(newSecondaryStock !== undefined ? { stockSecondaryQuantity: newSecondaryStock } : {})
+        },
       });
       
       if (userId) {
@@ -578,8 +584,11 @@ app.post('/api/products/replenish', authenticate(['ADMIN', 'WAREHOUSE_WORKER', '
             productId,
             type: isAdjustment ? 'ADJUSTMENT' : 'INBOUND',
             quantity: quantityToAdd,
+            secondaryQuantity: secondaryQuantityToAdd,
             previousStock: product.stockQuantity,
             newStock,
+            previousSecondaryStock: product.stockSecondaryQuantity,
+            newSecondaryStock: newSecondaryStock,
             userId,
             notes: notes || (isAdjustment ? 'Барааны тохируулга' : 'Бараа татан авалт')
           }
@@ -613,10 +622,16 @@ app.post('/api/inventory/issue', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FIN
         }
         
         const newStock = product.stockQuantity - item.quantity;
+        const newSecondaryStock = item.secondaryQuantity !== undefined
+            ? (product.stockSecondaryQuantity || 0) - item.secondaryQuantity
+            : undefined;
         
         const updatedProduct = await tx.product.update({
           where: { id: item.productId },
-          data: { stockQuantity: newStock },
+          data: { 
+            stockQuantity: newStock,
+            ...(newSecondaryStock !== undefined ? { stockSecondaryQuantity: newSecondaryStock } : {})
+          },
         });
         
         await tx.inventoryTransaction.create({
@@ -624,8 +639,11 @@ app.post('/api/inventory/issue', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FIN
             productId: item.productId,
             type: issueType === 'ADJUSTMENT' ? 'ADJUSTMENT' : 'OUTBOUND',
             quantity: -Math.abs(item.quantity),
+            secondaryQuantity: item.secondaryQuantity !== undefined ? -Math.abs(item.secondaryQuantity) : undefined,
             previousStock: product.stockQuantity,
             newStock,
+            previousSecondaryStock: product.stockSecondaryQuantity,
+            newSecondaryStock: newSecondaryStock,
             userId: req.user!.id,
             notes: notes || 'Гараар зарлагадсан'
           }
@@ -1483,11 +1501,13 @@ app.post('/api/procurements', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async
     const itemsData = (items || []).map((item: any) => {
       const q = Number(item.quantity || 0);
       const p = Number(item.unitPrice || 0);
+      const sq = item.secondaryQuantity ? Number(item.secondaryQuantity) : undefined;
       const total = q * p;
       totalAmount += total;
       return {
         productId: item.productId,
         quantity: q,
+        secondaryQuantity: sq,
         unitPrice: p,
         totalPrice: total
       };
@@ -1517,11 +1537,16 @@ app.post('/api/procurements', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async
           const prod = productMap.get(item.productId);
           if (prod) {
             const newStock = prod.stockQuantity + item.quantity;
+            const newSecondaryStock = item.secondaryQuantity !== undefined 
+                ? (prod.stockSecondaryQuantity || 0) + item.secondaryQuantity
+                : undefined;
+                
             await tx.product.update({
               where: { id: item.productId },
               data: {
                 stockQuantity: newStock,
-                costPrice: item.unitPrice
+                costPrice: item.unitPrice,
+                ...(newSecondaryStock !== undefined ? { stockSecondaryQuantity: newSecondaryStock } : {})
               }
             });
             await tx.inventoryTransaction.create({
@@ -1529,8 +1554,11 @@ app.post('/api/procurements', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async
                 productId: item.productId,
                 type: 'INBOUND',
                 quantity: Math.round(item.quantity),
+                secondaryQuantity: item.secondaryQuantity ? Math.round(item.secondaryQuantity) : undefined,
                 previousStock: prod.stockQuantity,
                 newStock: Math.round(newStock),
+                previousSecondaryStock: prod.stockSecondaryQuantity,
+                newSecondaryStock: newSecondaryStock !== undefined ? Math.round(newSecondaryStock) : undefined,
                 userId: req.user!.id,
                 notes: `Татан авалт #${procurementNo} (${supplierName || 'Нэгдсэн татан авалт'})`
               }
@@ -1556,11 +1584,16 @@ app.post('/api/procurements', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async
         const prod = productMap.get(item.productId) || await prisma.product.findUnique({ where: { id: item.productId } });
         if (prod) {
           const newStock = prod.stockQuantity + item.quantity;
+          const newSecondaryStock = item.secondaryQuantity !== undefined 
+              ? (prod.stockSecondaryQuantity || 0) + item.secondaryQuantity
+              : undefined;
+
           await prisma.product.update({
             where: { id: item.productId },
             data: {
               stockQuantity: newStock,
-              costPrice: item.unitPrice
+              costPrice: item.unitPrice,
+              ...(newSecondaryStock !== undefined ? { stockSecondaryQuantity: newSecondaryStock } : {})
             }
           });
           await prisma.inventoryTransaction.create({
@@ -1568,8 +1601,11 @@ app.post('/api/procurements', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async
               productId: item.productId,
               type: 'INBOUND',
               quantity: Math.round(item.quantity),
+              secondaryQuantity: item.secondaryQuantity ? Math.round(item.secondaryQuantity) : undefined,
               previousStock: prod.stockQuantity,
               newStock: Math.round(newStock),
+              previousSecondaryStock: prod.stockSecondaryQuantity,
+              newSecondaryStock: newSecondaryStock !== undefined ? Math.round(newSecondaryStock) : undefined,
               userId: req.user!.id,
               notes: `Татан авалт #${procurementNo} (${supplierName || 'Нэгдсэн татан авалт'})`
             }
@@ -1668,7 +1704,8 @@ app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER']),
     if (customIngredients && Array.isArray(customIngredients) && customIngredients.length > 0) {
       ingredientsToUse = customIngredients.map((i: any) => ({
         ingredientId: i.ingredientId,
-        quantityUsed: Number(i.quantityUsed || 0)
+        quantityUsed: Number(i.quantityUsed || 0),
+        secondaryQuantityUsed: i.secondaryQuantityUsed ? Number(i.secondaryQuantityUsed) : undefined
       }));
     } else {
       const bom = await prisma.bOM.findFirst({
@@ -1678,7 +1715,8 @@ app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER']),
       if (bom && bom.items.length > 0) {
         ingredientsToUse = bom.items.map(item => ({
           ingredientId: item.ingredientId,
-          quantityUsed: item.quantityPerUnit * qProduced
+          quantityUsed: item.quantityPerUnit * qProduced,
+          secondaryQuantityUsed: undefined
         }));
       }
     }
@@ -1710,6 +1748,7 @@ app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER']),
       batchItemsData.push({
         ingredientId: item.ingredientId,
         quantityUsed: item.quantityUsed,
+        secondaryQuantityUsed: (item as any).secondaryQuantityUsed,
         unitPrice: price,
         totalPrice: itemTotalCost
       });
@@ -1728,17 +1767,27 @@ app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER']),
         for (const item of batchItemsData) {
           const prod = ingredientMap.get(item.ingredientId)!;
           const newStock = prod.stockQuantity - item.quantityUsed;
+          const newSecondaryStock = item.secondaryQuantityUsed !== undefined
+              ? (prod.stockSecondaryQuantity || 0) - item.secondaryQuantityUsed
+              : undefined;
+
           await tx.product.update({
             where: { id: item.ingredientId },
-            data: { stockQuantity: newStock }
+            data: { 
+              stockQuantity: newStock,
+              ...(newSecondaryStock !== undefined ? { stockSecondaryQuantity: newSecondaryStock } : {})
+            }
           });
           await tx.inventoryTransaction.create({
             data: {
               productId: item.ingredientId,
               type: 'OUTBOUND',
-              quantity: Math.round(item.quantityUsed),
+              quantity: -Math.round(item.quantityUsed),
+              secondaryQuantity: item.secondaryQuantityUsed ? -Math.round(item.secondaryQuantityUsed) : undefined,
               previousStock: prod.stockQuantity,
               newStock: Math.round(newStock),
+              previousSecondaryStock: prod.stockSecondaryQuantity,
+              newSecondaryStock: newSecondaryStock !== undefined ? Math.round(newSecondaryStock) : undefined,
               userId: req.user!.id,
               notes: `Үйлдвэрлэлд олгосон ТЭМ/Материал #${batchNumber}`
             }

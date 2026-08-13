@@ -49,11 +49,11 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
   const [unit, setUnit] = useState('кг');
   const [unitPrice, setUnitPrice] = useState<number | ''>(0);
   const [stockQuantity, setStockQuantity] = useState<number | ''>(0);
-  const [minStockLevel, setMinStockLevel] = useState<number | ''>(10);
-  const [description, setDescription] = useState('');
-
-  // Form state for Replenish/Stock Increase
+  const [minStockLevel, setMinStockLevel] = useState<number | ''>('');
+  
+  // Replenish State
   const [replenishQty, setReplenishQty] = useState<number | ''>(50);
+  const [replenishSecondaryQty, setReplenishSecondaryQty] = useState<number | ''>('');
   const [replenishCostPrice, setReplenishCostPrice] = useState<number | ''>('');
 
       const [isSubmitting, setIsSubmitting] = useState(false);
@@ -207,12 +207,22 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
 
       // 2. Агуулахын нөөц нэмэх (Transaction үүсгэх)
       if (addQty > 0) {
-        await api.replenishProduct(
-          replenishTarget.id,
-          addQty,
-          currentUser.id,
-          `ТЭМ татан авалт. Өртөг: ${newPrice}₮`
-        );
+        const payload: any = {
+          productId: replenishTarget.id,
+          quantityToAdd: addQty,
+          userId: currentUser.id,
+          notes: `ТЭМ татан авалт. Өртөг: ${newPrice}₮`
+        };
+        if (replenishSecondaryQty !== '') {
+          payload.secondaryQuantityToAdd = Number(replenishSecondaryQty);
+        }
+
+        const res = await fetch('/api/products/replenish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error(await res.text());
       }
 
       toast.success('Материалын агуулахын нөөц амжилттай нэмэгдлээ!');
@@ -220,6 +230,7 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
       // 3. UI-г шууд шинэчлэх
       setReplenishTarget(null);
       setReplenishQty(50);
+      setReplenishSecondaryQty('');
       setReplenishCostPrice('');
       onRefresh();
     } catch (err: any) {
@@ -385,7 +396,6 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
                 <th className="px-4 py-3 font-bold text-[11px] uppercase">Материалын нэр / SKU</th>
                 <th className="px-4 py-3 font-bold text-[11px] uppercase">Төрөл</th>
                 <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Үлдэгдэл нөөц</th>
-                <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Эхний үлдэгдэл</th>
                 <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Нэгж худалдан авах өртөг</th>
                 <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Нийт нөөцийн өртөг</th>
                 <th className="px-4 py-3 font-bold text-[11px] uppercase text-center">Төлөв</th>
@@ -413,10 +423,12 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
                     <td className="px-4 py-3 text-right font-bold text-slate-800">
                       <span className={isLow ? 'text-amber-700' : 'text-slate-900'}>
                         {m.stockQuantity} {m.unit || 'ш'}
+                        {m.stockSecondaryQuantity !== undefined && m.stockSecondaryQuantity > 0 && (
+                          <span className="ml-1 text-slate-500 font-medium text-[11px]">
+                            / {m.stockSecondaryQuantity} ш
+                          </span>
+                        )}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium text-slate-500">
-                      {m.initialStock || 0} {m.unit || 'ш'}
                     </td>
                     <td className="px-4 py-3 text-right font-mono font-semibold text-slate-800">
                       ₮{cost.toLocaleString()}
@@ -635,6 +647,20 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
                   required
                 />
               </div>
+
+              {replenishTarget.unit?.toLowerCase() === 'кг' && (
+                <div className="animate-in fade-in zoom-in-95 duration-200">
+                  <label className="block text-xs font-bold text-indigo-700 mb-1">Ширхэг (Гулууз, Толгой)</label>
+                  <input
+                    type="number"
+                    value={replenishSecondaryQty}
+                    onChange={(e) => setReplenishSecondaryQty(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="Жишээ нь: 5 ширхэг"
+                    className="w-full bg-indigo-50 border border-indigo-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-indigo-900 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                  <p className="text-[10px] text-indigo-500 mt-1">Зөвхөн мах зэрэг кг-р болон ширхэгээр давхар хэмжих шаардлагатай бол бөглөнө.</p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Шинэ нэгж худалдан авах үнэ (₮)</label>

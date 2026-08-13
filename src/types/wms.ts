@@ -71,6 +71,7 @@ export interface Product {
   unit?: string;
   materialType?: MaterialType;
   stockQuantity: number;
+  stockSecondaryQuantity?: number;
   minStockLevel: number;
   isActive: boolean;
   categoryId?: string;
@@ -164,6 +165,7 @@ export interface ProcurementItem {
   productId: string;
   product?: Product;
   quantity: number;
+  secondaryQuantity?: number;
   unitPrice: number;
   totalPrice: number;
 }
@@ -271,8 +273,11 @@ export interface InventoryTransaction {
   productId: string;
   type: TransactionType;
   quantity: number;
+  secondaryQuantity?: number;
   previousStock: number;
   newStock: number;
+  previousSecondaryStock?: number;
+  newSecondaryStock?: number;
   userId: string;
   referenceId?: string;
   notes?: string;

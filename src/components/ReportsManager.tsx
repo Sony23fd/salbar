@@ -313,12 +313,21 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) =
                       </td>
                       <td className="p-4 text-right font-mono font-bold text-emerald-600">
                         {t.quantity > 0 ? `+${t.quantity}` : '-'}
+                        {t.quantity > 0 && t.secondaryQuantity !== undefined && t.secondaryQuantity !== null && (
+                          <div className="text-[10px] text-emerald-500 font-medium">+{t.secondaryQuantity} ш</div>
+                        )}
                       </td>
                       <td className="p-4 text-right font-mono font-bold text-red-600">
                         {t.quantity < 0 ? `${t.quantity}` : '-'}
+                        {t.quantity < 0 && t.secondaryQuantity !== undefined && t.secondaryQuantity !== null && (
+                          <div className="text-[10px] text-red-500 font-medium">{t.secondaryQuantity} ш</div>
+                        )}
                       </td>
                       <td className="p-4 text-right text-slate-900 font-mono font-bold">
                         {t.newStock}
+                        {t.newSecondaryStock !== undefined && t.newSecondaryStock !== null && (
+                          <div className="text-[10px] text-slate-500 font-medium">{t.newSecondaryStock} ш</div>
+                        )}
                       </td>
                       <td className="p-4 text-right text-slate-500 font-mono font-medium">
                         {t.product ? ((t.product.costPrice && t.product.costPrice > 0) ? t.product.costPrice : (t.product.unitPrice || 0)).toLocaleString() + '₮' : '-'}
