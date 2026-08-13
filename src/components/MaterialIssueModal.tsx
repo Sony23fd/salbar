@@ -260,6 +260,7 @@ export const MaterialIssueModal: React.FC<Props> = ({ materials, onClose, onSucc
                             <div className="flex items-center gap-2 animate-in fade-in zoom-in-95 duration-200">
                               <input
                                 type="number"
+                                step="any"
                                 min="0"
                                 max={item.product.stockSecondaryQuantity || 9999}
                                 value={item.secondaryQuantity || ''}

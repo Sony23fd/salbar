@@ -189,9 +189,10 @@ export const LivestockManager: React.FC<LivestockManagerProps> = ({ currentUser 
                   <label className="block font-bold text-emerald-800 mb-1">Нисхээс Ирсэн Мал (+)</label>
                   <input
                     type="number"
+                    step="any"
                     min="0"
                     value={receivedCount}
-                    onChange={(e) => setReceivedCount(parseInt(e.target.value) || 0)}
+                    onChange={(e) => setReceivedCount(parseFloat(e.target.value) || 0)}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 font-mono font-bold text-emerald-700"
                   />
                 </div>
@@ -200,9 +201,10 @@ export const LivestockManager: React.FC<LivestockManagerProps> = ({ currentUser 
                   <label className="block font-bold text-blue-800 mb-1">Хорхог / Бойд Төхөөрсөн (-)</label>
                   <input
                     type="number"
+                    step="any"
                     min="0"
                     value={slaughteredCount}
-                    onChange={(e) => setSlaughteredCount(parseInt(e.target.value) || 0)}
+                    onChange={(e) => setSlaughteredCount(parseFloat(e.target.value) || 0)}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 font-mono font-bold text-blue-700"
                   />
                 </div>
@@ -211,9 +213,10 @@ export const LivestockManager: React.FC<LivestockManagerProps> = ({ currentUser 
                   <label className="block font-bold text-slate-700 mb-1">Ажилчдад Олгосон (-)</label>
                   <input
                     type="number"
+                    step="any"
                     min="0"
                     value={staffFoodCount}
-                    onChange={(e) => setStaffFoodCount(parseInt(e.target.value) || 0)}
+                    onChange={(e) => setStaffFoodCount(parseFloat(e.target.value) || 0)}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 font-mono"
                   />
                 </div>
@@ -222,9 +225,10 @@ export const LivestockManager: React.FC<LivestockManagerProps> = ({ currentUser 
                   <label className="block font-bold text-red-700 mb-1">Үхсэн Мал (-)</label>
                   <input
                     type="number"
+                    step="any"
                     min="0"
                     value={deadCount}
-                    onChange={(e) => setDeadCount(parseInt(e.target.value) || 0)}
+                    onChange={(e) => setDeadCount(parseFloat(e.target.value) || 0)}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 font-mono text-red-600 font-bold"
                   />
                 </div>
@@ -233,9 +237,10 @@ export const LivestockManager: React.FC<LivestockManagerProps> = ({ currentUser 
                   <label className="block font-bold text-slate-700 mb-1">Амьдаар нь Зарсан (-)</label>
                   <input
                     type="number"
+                    step="any"
                     min="0"
                     value={soldCount}
-                    onChange={(e) => setSoldCount(parseInt(e.target.value) || 0)}
+                    onChange={(e) => setSoldCount(parseFloat(e.target.value) || 0)}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 font-mono"
                   />
                 </div>
@@ -244,9 +249,10 @@ export const LivestockManager: React.FC<LivestockManagerProps> = ({ currentUser 
                   <label className="block font-bold text-slate-700 mb-1">Нисэх рүү Буцаасан (-)</label>
                   <input
                     type="number"
+                    step="any"
                     min="0"
                     value={returnedCount}
-                    onChange={(e) => setReturnedCount(parseInt(e.target.value) || 0)}
+                    onChange={(e) => setReturnedCount(parseFloat(e.target.value) || 0)}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 font-mono"
                   />
                 </div>

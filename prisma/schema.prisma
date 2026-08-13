@@ -114,7 +114,7 @@ model BranchInventory {
   branch        Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
   productId     String
   product       Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  quantity      Int       @default(0)
+  quantity      Float       @default(0)
   updatedAt     DateTime  @updatedAt
 
   @@unique([branchId, productId])
@@ -146,10 +146,10 @@ model Product {
   costPrice     Decimal      @db.Decimal(10, 2) @default(0)
   unit          String       @default("ш")
   materialType  MaterialType @default(FINISHED_GOOD)
-  stockQuantity Int          @default(0)
-  stockSecondaryQuantity Int @default(0)
-  initialStock  Int          @default(0) // Эхний үлдэгдэл
-  minStockLevel Int          @default(5)
+  stockQuantity Float          @default(0)
+  stockSecondaryQuantity Float @default(0)
+  initialStock  Float          @default(0) // Эхний үлдэгдэл
+  minStockLevel Float          @default(5)
   isActive      Boolean      @default(true)
   
   categoryId    String?
@@ -179,12 +179,12 @@ model InventoryTransaction {
   productId     String
   product       Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
   type          TransactionType
-  quantity      Int
-  secondaryQuantity Int?
-  previousStock Int
-  newStock      Int
-  previousSecondaryStock Int?
-  newSecondaryStock      Int?
+  quantity      Float
+  secondaryQuantity Float?
+  previousStock Float
+  newStock      Float
+  previousSecondaryStock Float?
+  newSecondaryStock      Float?
   userId        String
   user          User            @relation(fields: [userId], references: [id])
   referenceId   String?         // Optional reference like Order Number
@@ -244,7 +244,7 @@ model OrderItem {
   order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId String
   product   Product  @relation(fields: [productId], references: [id])
-  quantity  Int
+  quantity  Float
   unitPrice Decimal  @db.Decimal(10, 2)
   totalPrice Decimal @db.Decimal(10, 2)
 
@@ -407,13 +407,13 @@ model DeboningLog {
 model LivestockLedger {
   id               String   @id @default(cuid())
   date             DateTime @default(now())
-  receivedCount    Int      @default(0)
-  slaughteredCount Int      @default(0)
-  staffFoodCount   Int      @default(0)
-  deadCount        Int      @default(0)
-  soldCount        Int      @default(0)
-  returnedCount    Int      @default(0)
-  endingCount      Int      @default(0)
+  receivedCount    Float      @default(0)
+  slaughteredCount Float      @default(0)
+  staffFoodCount   Float      @default(0)
+  deadCount        Float      @default(0)
+  soldCount        Float      @default(0)
+  returnedCount    Float      @default(0)
+  endingCount      Float      @default(0)
   notes            String?
   createdAt        DateTime @default(now())
 
@@ -444,7 +444,7 @@ model ProcurementItem {
   productId     String
   product       Product     @relation(fields: [productId], references: [id])
   quantity      Float
-  secondaryQuantity Int?
+  secondaryQuantity Float?
   unitPrice     Decimal     @db.Decimal(10, 2)
   totalPrice    Decimal     @db.Decimal(10, 2)
   expiryDate    DateTime?

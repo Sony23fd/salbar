@@ -1553,12 +1553,12 @@ app.post('/api/procurements', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async
               data: {
                 productId: item.productId,
                 type: 'INBOUND',
-                quantity: Math.round(item.quantity),
-                secondaryQuantity: item.secondaryQuantity ? Math.round(item.secondaryQuantity) : undefined,
+                quantity: item.quantity,
+                secondaryQuantity: item.secondaryQuantity ? item.secondaryQuantity : undefined,
                 previousStock: prod.stockQuantity,
-                newStock: Math.round(newStock),
+                newStock: newStock,
                 previousSecondaryStock: prod.stockSecondaryQuantity,
-                newSecondaryStock: newSecondaryStock !== undefined ? Math.round(newSecondaryStock) : undefined,
+                newSecondaryStock: newSecondaryStock !== undefined ? newSecondaryStock : undefined,
                 userId: req.user!.id,
                 notes: `Татан авалт #${procurementNo} (${supplierName || 'Нэгдсэн татан авалт'})`
               }
@@ -1600,12 +1600,12 @@ app.post('/api/procurements', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async
             data: {
               productId: item.productId,
               type: 'INBOUND',
-              quantity: Math.round(item.quantity),
-              secondaryQuantity: item.secondaryQuantity ? Math.round(item.secondaryQuantity) : undefined,
+              quantity: item.quantity,
+              secondaryQuantity: item.secondaryQuantity ? item.secondaryQuantity : undefined,
               previousStock: prod.stockQuantity,
-              newStock: Math.round(newStock),
+              newStock: newStock,
               previousSecondaryStock: prod.stockSecondaryQuantity,
-              newSecondaryStock: newSecondaryStock !== undefined ? Math.round(newSecondaryStock) : undefined,
+              newSecondaryStock: newSecondaryStock !== undefined ? newSecondaryStock : undefined,
               userId: req.user!.id,
               notes: `Татан авалт #${procurementNo} (${supplierName || 'Нэгдсэн татан авалт'})`
             }
@@ -1782,19 +1782,19 @@ app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER']),
             data: {
               productId: item.ingredientId,
               type: 'OUTBOUND',
-              quantity: -Math.round(item.quantityUsed),
-              secondaryQuantity: item.secondaryQuantityUsed ? -Math.round(item.secondaryQuantityUsed) : undefined,
+              quantity: -item.quantityUsed,
+              secondaryQuantity: item.secondaryQuantityUsed ? -item.secondaryQuantityUsed : undefined,
               previousStock: prod.stockQuantity,
-              newStock: Math.round(newStock),
+              newStock: newStock,
               previousSecondaryStock: prod.stockSecondaryQuantity,
-              newSecondaryStock: newSecondaryStock !== undefined ? Math.round(newSecondaryStock) : undefined,
+              newSecondaryStock: newSecondaryStock !== undefined ? newSecondaryStock : undefined,
               userId: req.user!.id,
               notes: `Үйлдвэрлэлд олгосон ТЭМ/Материал #${batchNumber}`
             }
           });
         }
 
-        const newFinishedStock = finishedProd.stockQuantity + Math.round(qProduced);
+        const newFinishedStock = finishedProd.stockQuantity + qProduced;
         await tx.product.update({
           where: { id: finishedProductId },
           data: {
@@ -1807,7 +1807,7 @@ app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER']),
           data: {
             productId: finishedProductId,
             type: 'INBOUND',
-            quantity: Math.round(qProduced),
+            quantity: qProduced,
             previousStock: finishedProd.stockQuantity,
             newStock: newFinishedStock,
             userId: req.user!.id,
@@ -1849,16 +1849,16 @@ app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER']),
           data: {
             productId: item.ingredientId,
             type: 'OUTBOUND',
-            quantity: Math.round(item.quantityUsed),
+            quantity: -item.quantityUsed,
             previousStock: prod.stockQuantity,
-            newStock: Math.round(newStock),
+            newStock: newStock,
             userId: req.user!.id,
             notes: `Үйлдвэрлэлд олгосон ТЭМ/Материал #${batchNumber}`
           }
         });
       }
 
-      const newFinishedStock = finishedProd.stockQuantity + Math.round(qProduced);
+      const newFinishedStock = finishedProd.stockQuantity + qProduced;
       await prisma.product.update({
         where: { id: finishedProductId },
         data: {
@@ -1871,7 +1871,7 @@ app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER']),
         data: {
           productId: finishedProductId,
           type: 'INBOUND',
-          quantity: Math.round(qProduced),
+          quantity: qProduced,
           previousStock: finishedProd.stockQuantity,
           newStock: newFinishedStock,
           userId: req.user!.id,

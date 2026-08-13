@@ -726,10 +726,11 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
                         <div className="w-24">
                           <input
                             type="number"
-                            min="1"
+                            min="0.1"
+                            step="any"
                             value={item.quantity}
                             onChange={(e) =>
-                              handleItemChange(idx, 'quantity', Math.max(1, parseInt(e.target.value) || 1))
+                              handleItemChange(idx, 'quantity', Math.max(0.1, parseFloat(e.target.value) || 0.1))
                             }
                             placeholder="Тоо"
                             className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 text-center font-mono font-bold"

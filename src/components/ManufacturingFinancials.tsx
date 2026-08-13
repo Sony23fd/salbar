@@ -1189,6 +1189,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
                       </select>
                       <input
                         type="number"
+                        step="any"
                         placeholder="Тоо"
                         value={item.quantity}
                         onChange={(e) => {
@@ -1286,6 +1287,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
                   <label className="block text-xs font-bold text-slate-700 mb-1">Үйлдвэрлэсэн Хэмжээ *</label>
                   <input
                     type="number"
+                    step="any"
                     value={prodQuantity}
                     onChange={(e) => setProdQuantity(parseFloat(e.target.value) || 0)}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold"
