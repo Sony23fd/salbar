@@ -38,7 +38,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onSimulateActivity,
 }) => {
   // Date Range State
-  const [dateRange, setDateRange] = useState<'30days' | 'thisMonth' | 'all' | 'custom'>('30days');
+  const [dateRange, setDateRange] = useState<'7days' | '30days' | 'thisMonth' | 'all' | 'custom'>('7days');
   const [customStartDate, setCustomStartDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
@@ -67,7 +67,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     end.setHours(23, 59, 59, 999);
     
     let start = new Date(0); // All time
-    if (dateRange === '30days') {
+    if (dateRange === '7days') {
+      start = new Date();
+      start.setDate(start.getDate() - 7);
+      start.setHours(0, 0, 0, 0);
+    } else if (dateRange === '30days') {
       start = new Date();
       start.setDate(start.getDate() - 30);
       start.setHours(0, 0, 0, 0);
@@ -202,6 +206,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             onChange={(e) => setDateRange(e.target.value as any)}
             className="bg-slate-50 border border-slate-200 text-sm font-semibold rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-colors hover:bg-slate-100"
           >
+            <option value="7days">Сүүлийн 7 хоног</option>
             <option value="30days">Сүүлийн 30 хоног</option>
             <option value="thisMonth">Энэ сар</option>
             <option value="all">Бүх хугацаа (All time)</option>

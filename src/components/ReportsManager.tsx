@@ -21,7 +21,7 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) =
   
   // Financial Summary State
   const [financialData, setFinancialData] = useState<any>(null);
-  const [dateRange, setDateRange] = useState<'today' | '7days' | '30days' | 'thisMonth' | 'lastMonth' | 'thisYear' | 'all' | 'custom'>('all');
+  const [dateRange, setDateRange] = useState<'today' | '7days' | '30days' | 'thisMonth' | 'lastMonth' | 'thisYear' | 'all' | 'custom'>('7days');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
 

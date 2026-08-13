@@ -49,7 +49,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
   const [productionBatches, setProductionBatches] = useState<any[]>([]);
 
   // Date Range State for Financial Summary
-  const [dateRange, setDateRange] = useState<'today' | '7days' | '30days' | 'thisMonth' | 'lastMonth' | 'thisYear' | 'all' | 'custom'>('all');
+  const [dateRange, setDateRange] = useState<'today' | '7days' | '30days' | 'thisMonth' | 'lastMonth' | 'thisYear' | 'all' | 'custom'>('7days');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
 
