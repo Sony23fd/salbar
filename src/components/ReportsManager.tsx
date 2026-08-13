@@ -397,6 +397,7 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) =
             </div>
           </div>
         </div>
+        </div>
       )}
 
       {/* MANUFACTURING REPORT TAB */}

@@ -55,7 +55,6 @@ export const MaterialIssueModal: React.FC<Props> = ({ materials, onClose, onSucc
         }
         return { ...item, quantity: isNaN(num) ? 0 : num };
       }
-      }
       return item;
     }));
   };
