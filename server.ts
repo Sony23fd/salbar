@@ -1235,7 +1235,7 @@ app.get('/api/audit/order-history', authenticate(['ADMIN']), async (req, res) =>
 // BOM (Bill of Materials / Жор) API Routes
 // ==========================================
 
-app.get('/api/boms', authenticate(['ADMIN', 'FINANCE', 'WAREHOUSE_WORKER']), async (req, res) => {
+app.get('/api/boms', authenticate(['ADMIN', 'FINANCE', 'WAREHOUSE_WORKER', 'PRODUCTION']), async (req, res) => {
   try {
     const boms = await prisma.bOM.findMany({
       include: {
@@ -1624,7 +1624,7 @@ app.post('/api/procurements', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async
 // Production Batch & Costing API Routes
 // ==========================================
 
-app.get('/api/production-batches', authenticate(['ADMIN', 'FINANCE', 'WAREHOUSE_WORKER']), async (req, res) => {
+app.get('/api/production-batches', authenticate(['ADMIN', 'FINANCE', 'WAREHOUSE_WORKER', 'PRODUCTION']), async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const where: any = {};
@@ -1678,7 +1678,7 @@ app.get('/api/production-batches/paginated', authenticate(), async (req, res) =>
   }
 });
 
-app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async (req, res) => {
+app.post('/api/production-batches', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'PRODUCTION']), async (req, res) => {
   try {
     const {
       finishedProductId,

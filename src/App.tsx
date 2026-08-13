@@ -37,6 +37,11 @@ const resolveInitialTab = (userRole?: string): string => {
     if (adminOnly.includes(candidate)) {
       return 'dashboard';
     }
+  } else if (userRole === 'PRODUCTION') {
+    const allowedForProduction = ['manufacturing', 'dashboard', 'tasks'];
+    if (!allowedForProduction.includes(candidate)) {
+      return 'manufacturing';
+    }
   }
 
   return candidate;

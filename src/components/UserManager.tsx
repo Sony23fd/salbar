@@ -31,10 +31,11 @@ const ALL_MODULES: ModulePermission[] = [
 ];
 
 const DEFAULT_ROLE_PERMISSIONS: Record<Role, string[]> = {
-  ADMIN: ALL_MODULES.map(m => m.id),
-  FINANCE: ['dashboard', 'materials', 'manufacturing', 'reports'],
+  ADMIN: ['dashboard', 'tasks', 'inventory', 'materials', 'manufacturing', 'orders', 'deliveries', 'branches', 'categories', 'reports', 'users', 'audit'],
+  FINANCE: ['dashboard', 'inventory', 'materials', 'manufacturing', 'orders', 'reports'],
   WAREHOUSE_WORKER: ['dashboard', 'tasks', 'inventory', 'materials', 'manufacturing', 'orders', 'reports'],
-  DELIVERY_DRIVER: ['dashboard', 'tasks', 'deliveries']
+  DELIVERY_DRIVER: ['dashboard', 'tasks', 'deliveries'],
+  PRODUCTION: ['dashboard', 'tasks', 'manufacturing']
 };
 
 export const UserManager: React.FC<UserManagerProps> = ({ currentUser }) => {
@@ -186,6 +187,8 @@ export const UserManager: React.FC<UserManagerProps> = ({ currentUser }) => {
         return 'bg-blue-100 text-blue-700 border-blue-200';
       case 'DELIVERY_DRIVER':
         return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      case 'PRODUCTION':
+        return 'bg-pink-100 text-pink-700 border-pink-200';
     }
   };
 
@@ -195,6 +198,7 @@ export const UserManager: React.FC<UserManagerProps> = ({ currentUser }) => {
       case 'FINANCE': return 'Санхүүгийн ажилтан';
       case 'WAREHOUSE_WORKER': return 'Агуулахын ажилтан';
       case 'DELIVERY_DRIVER': return 'Хүргэлтийн жолооч';
+      case 'PRODUCTION': return 'Үйлдвэрлэлийн ажилтан';
     }
   };
 
@@ -381,7 +385,8 @@ export const UserManager: React.FC<UserManagerProps> = ({ currentUser }) => {
                 >
                   <option value="WAREHOUSE_WORKER">Агуулахын ажилтан</option>
                   <option value="FINANCE">Санхүүгийн ажилтан</option>
-                  <option value="DELIVERY_DRIVER">Түгээлтийн жолооч</option>
+                  <option value="DELIVERY_DRIVER">Хүргэлтийн жолооч</option>
+                  <option value="PRODUCTION">Үйлдвэрлэлийн ажилтан</option>
                   <option value="ADMIN">Админ</option>
                 </select>
               </div>

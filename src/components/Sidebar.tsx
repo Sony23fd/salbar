@@ -30,7 +30,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     ADMIN: ['dashboard', 'tasks', 'inventory', 'materials', 'manufacturing', 'orders', 'deliveries', 'branches', 'categories', 'reports', 'users', 'audit'],
     FINANCE: ['dashboard', 'inventory', 'materials', 'manufacturing', 'orders', 'reports'],
     WAREHOUSE_WORKER: ['dashboard', 'tasks', 'inventory', 'materials', 'manufacturing', 'orders', 'reports'],
-    DELIVERY_DRIVER: ['dashboard', 'tasks', 'deliveries']
+    DELIVERY_DRIVER: ['dashboard', 'tasks', 'deliveries'],
+    PRODUCTION: ['dashboard', 'tasks', 'manufacturing']
   };
 
   const userPerms = (currentUser.permissions && currentUser.permissions.length > 0)

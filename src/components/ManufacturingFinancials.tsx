@@ -119,8 +119,32 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
   const [prodNormalScrap, setProdNormalScrap] = useState<number>(0);
   const [prodAbnormalScrap, setProdAbnormalScrap] = useState<number>(0);
   const [prodNotes, setProdNotes] = useState('');
-  const [prodChecklist, setProdChecklist] = useState<{ stepNumber: number; completed: boolean }[]>([]);
+  const [prodChecklist, setProdChecklist] = useState<any[]>([]);
   const [prodScrapAlert, setProdScrapAlert] = useState<boolean>(false);
+  const [prodCustomIngredients, setProdCustomIngredients] = useState<{ ingredientId: string; quantityUsed: number, standardQuantity: number, name: string, unit: string }[]>([]);
+
+  useEffect(() => {
+    if (prodFinishedProductId) {
+      const bom = boms.find(b => b.finishedProductId === prodFinishedProductId);
+      if (bom && bom.items) {
+        setProdCustomIngredients(bom.items.map((item: any) => {
+          const product = products.find(p => p.id === item.ingredientId);
+          const stdQty = parseFloat((item.quantityPerUnit * (prodQuantity || 0)).toFixed(4));
+          return {
+            ingredientId: item.ingredientId,
+            name: product?.name || 'Тодорхойгүй',
+            unit: product?.unit || 'кг',
+            standardQuantity: stdQty,
+            quantityUsed: stdQty
+          };
+        }));
+      } else {
+        setProdCustomIngredients([]);
+      }
+    } else {
+      setProdCustomIngredients([]);
+    }
+  }, [prodFinishedProductId, prodQuantity, boms, products]);
 
   // Form States - Quick Material Creation
   const [showQuickMaterialModal, setShowQuickMaterialModal] = useState(false);
@@ -318,8 +342,9 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
         normalScrapAmount: prodNormalScrap,
         abnormalScrapAmount: prodAbnormalScrap,
         notes: prodNotes,
-        checklistStatus: prodChecklist,
-        scrapAnalysisAlert: prodScrapAlert
+        checklistStatus: JSON.stringify(prodChecklist),
+        scrapAnalysisAlert: prodScrapAlert ? 'true' : 'false',
+        customIngredients: prodCustomIngredients.length > 0 ? prodCustomIngredients.map(i => ({ ingredientId: i.ingredientId, quantityUsed: i.quantityUsed })) : undefined
       });
       toast.success('Үйлдвэрлэлийн бүртгэл амжилттай хийгдэж, орцын ТЭМ/Сав баглаа хасагдан, нэгж бодит өртөг бодогдон агуулахад хүлээн авагдлаа.');
       setShowProductionModal(false);
@@ -1334,6 +1359,58 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
                   />
                 </div>
               </div>
+
+              {prodCustomIngredients.length > 0 && (
+                <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 space-y-3">
+                  <h4 className="text-sm font-bold text-slate-800 flex items-center gap-1.5"><Boxes className="w-4 h-4 text-purple-600"/> Орц материалын зарцуулалт (Хорогдол бүртгэх)</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs whitespace-nowrap">
+                      <thead className="text-slate-500 border-b border-slate-200">
+                        <tr>
+                          <th className="pb-2 font-medium">Материал</th>
+                          <th className="pb-2 font-medium text-right">Стандарт орц</th>
+                          <th className="pb-2 font-medium text-right">Хорогдол нэмэх</th>
+                          <th className="pb-2 font-medium text-right">Нийт зарцуулалт</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {prodCustomIngredients.map((item, idx) => {
+                          const scrap = parseFloat((item.quantityUsed - item.standardQuantity).toFixed(4));
+                          return (
+                            <tr key={item.ingredientId}>
+                              <td className="py-2 font-medium text-slate-800">{item.name}</td>
+                              <td className="py-2 text-right text-slate-600">{item.standardQuantity.toLocaleString()} {item.unit}</td>
+                              <td className="py-2 text-right">
+                                <div className="flex justify-end items-center gap-1">
+                                  <input
+                                    type="number"
+                                    step="any"
+                                    className="w-20 px-2 py-1 text-right text-xs border border-slate-300 rounded focus:ring-1 focus:ring-purple-500"
+                                    value={scrap === 0 ? '' : scrap}
+                                    placeholder="0"
+                                    onChange={(e) => {
+                                      const val = parseFloat(e.target.value) || 0;
+                                      const newIngredients = [...prodCustomIngredients];
+                                      newIngredients[idx].quantityUsed = parseFloat((item.standardQuantity + val).toFixed(4));
+                                      setProdCustomIngredients(newIngredients);
+                                    }}
+                                  />
+                                  <span className="text-slate-500">{item.unit}</span>
+                                </div>
+                              </td>
+                              <td className="py-2 text-right font-bold text-slate-800">
+                                {item.quantityUsed.toLocaleString()} {item.unit}
+                                {scrap > 0 && <span className="text-red-500 ml-1 text-[10px]">(+{scrap})</span>}
+                                {scrap < 0 && <span className="text-green-500 ml-1 text-[10px]">({scrap})</span>}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
               {prodChecklist.length > 0 && (
                 <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 space-y-3">
