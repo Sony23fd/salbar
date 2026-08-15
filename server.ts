@@ -498,7 +498,7 @@ app.post('/api/products', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE'])
           sku: data.sku,
           name: data.name,
           description: data.description,
-          unitPrice: data.unitPrice,
+          unitPrice: data.unitPrice || 0,
           costPrice: data.costPrice || 0,
           unit: data.unit || 'ш',
           materialType: data.materialType || 'FINISHED_GOOD',
@@ -546,7 +546,7 @@ app.put('/api/products/:id', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE
       data: {
         name: data.name,
         description: data.description,
-        unitPrice: data.unitPrice,
+        unitPrice: data.unitPrice !== undefined ? data.unitPrice : undefined,
         costPrice: data.costPrice !== undefined ? data.costPrice : undefined,
         unit: data.unit,
         materialType: data.materialType,

@@ -9,9 +9,8 @@ export const ProductSchema = z.object({
     .transform((val) => val.toUpperCase().trim()),
   name: z.string().min(2, 'Product name is required').trim(),
   description: z.string().optional(),
-  unitPrice: z.coerce
-    .number()
-    .positive('Unit price must be greater than zero'),
+  costPrice: z.coerce.number().optional(),
+  unitPrice: z.coerce.number().optional(),
   stockQuantity: z.coerce
     .number()
     .int('Stock quantity must be an integer')

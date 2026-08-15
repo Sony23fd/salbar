@@ -31,7 +31,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
   const [sku, setSku] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [unitPrice, setUnitPrice] = useState<number | ''>('');
+  const [costPrice, setCostPrice] = useState<number | ''>('');
   const [stockQuantity, setStockQuantity] = useState<number | ''>('');
   const [minStockLevel, setMinStockLevel] = useState<number | ''>(5);
   const [commissionPercent, setCommissionPercent] = useState<number | ''>('');
@@ -76,7 +76,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
         sku,
         name,
         description,
-        unitPrice: Number(unitPrice),
+        costPrice: materialType !== 'FINISHED_GOOD' ? Number(costPrice) : undefined,
         stockQuantity: Number(stockQuantity),
         minStockLevel: Number(minStockLevel),
         categoryId: categoryId || undefined,
@@ -92,7 +92,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
         setSku('');
         setName('');
         setDescription('');
-        setUnitPrice('');
+        setCostPrice('');
         setStockQuantity('');
         setMinStockLevel(5);
         setCommissionPercent('');
@@ -112,7 +112,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
     setEditingProduct(prod);
     setName(prod.name);
     setDescription(prod.description || '');
-    setUnitPrice(prod.unitPrice);
+    setCostPrice(prod.costPrice);
     setMinStockLevel(prod.minStockLevel);
     setCommissionPercent(prod.commissionPercent !== undefined ? prod.commissionPercent : '');
     setVatPercent(prod.vatPercent !== undefined ? prod.vatPercent : '');
@@ -128,8 +128,8 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
     
     // Check for 50% price change warning
     if (!editWarning) {
-      const oldPrice = editingProduct.unitPrice;
-      const newPrice = Number(unitPrice);
+      const oldPrice = editingProduct.costPrice;
+      const newPrice = Number(costPrice);
       if (oldPrice > 0) {
         const diffRatio = Math.abs(newPrice - oldPrice) / oldPrice;
         if (diffRatio > 0.5) {
@@ -144,7 +144,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
       await api.updateProduct(editingProduct.id, {
         name,
         description,
-        unitPrice: Number(unitPrice),
+        costPrice: materialType !== 'FINISHED_GOOD' ? Number(costPrice) : undefined,
         minStockLevel: Number(minStockLevel),
         categoryId: categoryId || undefined,
         materialType: materialType,
@@ -238,8 +238,8 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
 
   const canEdit = currentUser.role === 'ADMIN' || currentUser.role === 'WAREHOUSE_WORKER';
 
-  const totalInventoryValue = products.reduce((sum, p) => sum + (Number(p.unitPrice) * p.stockQuantity), 0);
-  const filteredInventoryValue = filteredProducts.reduce((sum, p) => sum + (Number(p.unitPrice) * p.stockQuantity), 0);
+  const totalInventoryValue = products.reduce((sum, p) => sum + (Number(p.costPrice) * p.stockQuantity), 0);
+  const filteredInventoryValue = filteredProducts.reduce((sum, p) => sum + (Number(p.costPrice) * p.stockQuantity), 0);
 
   return (
     <div className="space-y-6">
@@ -327,7 +327,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
               <tr>
                 <th className="p-4">SKU / Барааны мэдээлэл</th>
                 <th className="p-4">Ангилал</th>
-                <th className="p-4 text-right">Нэгж үнэ</th>
+                <th className="p-4 text-right">Өртөг үнэ</th>
                 <th className="p-4 text-right">Агуулахын үлдэгдэл</th>
                 <th className="p-4 text-right">Нийт дүн</th>
                 <th className="p-4 text-center">Төлөв</th>
@@ -384,7 +384,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                       </td>
 
                       <td className="p-4 text-right font-mono font-bold text-slate-900">
-                        {prod.unitPrice.toLocaleString()}₮
+                        {prod.costPrice.toLocaleString()}₮
                       </td>
 
                       <td className="p-4 text-right font-mono font-bold text-sm">
@@ -394,7 +394,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                       </td>
 
                       <td className="p-4 text-right font-mono font-bold text-sm text-blue-700 bg-blue-50/50">
-                        {(Number(prod.unitPrice) * prod.stockQuantity).toLocaleString()}₮
+                        {(Number(prod.costPrice) * prod.stockQuantity).toLocaleString()}₮
                       </td>
 
                       <td className="p-4 text-center">
@@ -579,21 +579,23 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Нэгж үнэ (₮) *</label>
-                  <input
-                    type="number"
-                    step="1"
-                    value={unitPrice}
-                    onChange={(e) => setUnitPrice(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder="120000"
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-mono"
-                    required
-                  />
-                  {fieldErrors['unitPrice'] && (
-                    <p className="text-[10px] text-red-600 mt-1">{fieldErrors['unitPrice'][0]}</p>
-                  )}
-                </div>
+                {materialType !== 'FINISHED_GOOD' && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Өртөг үнэ (₮) *</label>
+                    <input
+                      type="number"
+                      step="1"
+                      value={costPrice}
+                      onChange={(e) => setCostPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="12000"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-mono"
+                      required
+                    />
+                    {fieldErrors['costPrice'] && (
+                      <p className="text-[10px] text-red-600 mt-1">{fieldErrors['costPrice'][0]}</p>
+                    )}
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Анхны нөөц *</label>
@@ -800,19 +802,21 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Нэгж үнэ (₮) *</label>
-                    <input
-                      type="number"
-                      value={unitPrice}
-                      onChange={(e) => {
-                        setUnitPrice(e.target.value ? Number(e.target.value) : '');
-                        setEditWarning(null); // Reset warning if they change the price again
-                      }}
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-bold"
-                      required
-                    />
-                  </div>
+                  {materialType !== 'FINISHED_GOOD' && (
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Өртөг үнэ (₮) *</label>
+                      <input
+                        type="number"
+                        value={costPrice}
+                        onChange={(e) => {
+                          setCostPrice(e.target.value ? Number(e.target.value) : '');
+                          setEditWarning(null);
+                        }}
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-bold"
+                        required
+                      />
+                    </div>
+                  )}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">Босго үлдэгдэл *</label>
                     <input
