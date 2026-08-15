@@ -1,10 +1,16 @@
 import React, { useState } from 'react';
-import { Database, Download, Trash2, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { Database, Download, Trash2, AlertTriangle, ShieldAlert, LogOut } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const DataAdminPanel: React.FC = () => {
   const [isClearing, setIsClearing] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.reload();
+  };
 
   const handleBackup = async () => {
     try {
@@ -69,6 +75,15 @@ export const DataAdminPanel: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 p-8">
       <div className="w-full space-y-6">
+        <div className="flex justify-end">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold rounded-xl transition-colors shadow-sm"
+          >
+            <LogOut className="w-4 h-4" /> Системээс гарах
+          </button>
+        </div>
+
         <div className="bg-red-50 border border-red-200 p-6 rounded-2xl flex items-start gap-4">
           <ShieldAlert className="w-8 h-8 text-red-600 shrink-0 mt-1" />
           <div>
