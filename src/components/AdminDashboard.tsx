@@ -264,7 +264,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       )}
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Orders */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
@@ -317,24 +317,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <p className="text-[11px] text-slate-500 mt-1">Салбаруудын нэмэгдэл үнээс олсон</p>
         </div>
 
-        {/* Low Stock Alert Count */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Үлдэгдэл багатай</span>
-            <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-3 flex items-baseline justify-between">
-            <span className="text-2xl font-black text-amber-900">{lowStockProducts.length} SKU</span>
-            {criticalStockProducts.length > 0 && (
-              <span className="text-xs text-red-700 bg-red-50 px-2 py-0.5 rounded-md border border-red-200 font-bold">
-                {criticalStockProducts.length} Нэн яаралтай
-              </span>
-            )}
-          </div>
-          <p className="text-[11px] text-slate-500 mt-1">Дахин татан авалт хийх шаардлагатай</p>
-        </div>
+
 
         {/* Branch Health Status */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-md transition-shadow">

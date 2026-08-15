@@ -38,7 +38,6 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
   const [name, setName] = useState('');
   const [location, setLocation] = useState('');
   const [contactPerson, setContactPerson] = useState('');
-  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [type, setType] = useState<BranchType>('BRANCH');
   const [profitPercent, setProfitPercent] = useState<number>(0);
@@ -62,7 +61,6 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
       setName(branch.name);
       setLocation(branch.location);
       setContactPerson(branch.contactPerson);
-      setEmail(branch.email);
       setPhone(branch.phone);
       setType(branch.type);
       setProfitPercent(branch.profitPercent || 0);
@@ -71,7 +69,6 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
       setName('');
       setLocation('');
       setContactPerson('');
-      setEmail('');
       setPhone('');
       setType('BRANCH');
       setProfitPercent(0);
@@ -101,12 +98,12 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
     setIsSubmitting(true);
     try {
       if (editingBranch) {
-        await api.updateBranch(editingBranch.id, { name, location, contactPerson, email, phone, type, profitPercent });
+        await api.updateBranch(editingBranch.id, { name, location, contactPerson, phone, type, profitPercent });
         if (selectedBranch?.id === editingBranch.id) {
             // refresh branch info in drawer will happen through onRefresh
         }
       } else {
-        await api.addBranch({ name, location, contactPerson, email, phone, type, profitPercent });
+        await api.addBranch({ name, location, contactPerson, phone, type, profitPercent });
       }
       onRefresh();
       closeModal();
@@ -316,7 +313,6 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
                       <div className="text-[11px] font-bold text-slate-400 uppercase mb-1">Менежер</div>
                       <div className="text-sm font-bold text-slate-800">{selectedBranch.contactPerson}</div>
                       <div className="text-xs text-slate-500 mt-1 flex items-center gap-1"><Phone className="w-3.5 h-3.5"/> {selectedBranch.phone}</div>
-                      <div className="text-xs text-slate-500 mt-1 flex items-center gap-1"><Mail className="w-3.5 h-3.5"/> {selectedBranch.email}</div>
                     </div>
                     <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
                       <div className="text-[11px] font-bold text-slate-400 uppercase mb-1">Хаяг байршил</div>
@@ -638,17 +634,6 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-mono"
-                    required
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Имэйл хаяг *</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500"
                     required
                   />
                 </div>
