@@ -104,9 +104,13 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
 });
 
 // Users
-app.get('/api/users', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'DELIVERY_DRIVER', 'FINANCE']), async (req, res) => {
+app.get('/api/users', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'DELIVERY_DRIVER', 'FINANCE', 'DATA_ADMIN']), async (req, res) => {
+  const whereClause: any = { isActive: true };
+  if (req.user?.role !== 'DATA_ADMIN') {
+    whereClause.role = { not: 'DATA_ADMIN' };
+  }
   const users = await prisma.user.findMany({
-    where: { isActive: true },
+    where: whereClause,
     select: { id: true, name: true, email: true, role: true, permissions: true, isActive: true } // Exclude password
   });
   res.json(users);
@@ -2464,6 +2468,67 @@ app.get('/api/manufacturing-report', authenticate(['ADMIN', 'FINANCE', 'WAREHOUS
       },
       details
     });
+  } catch (err) {
+      handleApiError(res, err);
+  }
+});
+
+// ==========================================
+// DATA_ADMIN API Endpoints
+// ==========================================
+
+// Get Full Backup
+app.get('/api/data-admin/backup', authenticate(['DATA_ADMIN']), async (req, res) => {
+  try {
+    const backupData = {
+      users: await prisma.user.findMany(),
+      branches: await prisma.branch.findMany(),
+      products: await prisma.product.findMany(),
+      materials: await prisma.material.findMany(),
+      bom: await prisma.bOM.findMany(),
+      bomItems: await prisma.bOMItem.findMany(),
+      inventoryTransactions: await prisma.inventoryTransaction.findMany(),
+      orders: await prisma.order.findMany(),
+      orderItems: await prisma.orderItem.findMany(),
+      livestock: await prisma.livestock.findMany(),
+      livestockLogs: await prisma.livestockLog.findMany(),
+      expenses: await prisma.expense.findMany(),
+      categories: await prisma.category.findMany(),
+      productionBatches: await prisma.productionBatch.findMany(),
+      manufacturingLogs: await prisma.manufacturingLog.findMany(),
+      systemLogs: await prisma.systemLog.findMany(),
+      tasks: await prisma.task.findMany()
+    };
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename="wms_backup.json"');
+    res.send(JSON.stringify(backupData, null, 2));
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
+
+// Clear Data (Except Users)
+app.post('/api/data-admin/clear', authenticate(['DATA_ADMIN']), async (req, res) => {
+  try {
+    await prisma.$transaction([
+      prisma.task.deleteMany(),
+      prisma.systemLog.deleteMany(),
+      prisma.manufacturingLog.deleteMany(),
+      prisma.productionBatch.deleteMany(),
+      prisma.expense.deleteMany(),
+      prisma.livestockLog.deleteMany(),
+      prisma.livestock.deleteMany(),
+      prisma.orderItem.deleteMany(),
+      prisma.order.deleteMany(),
+      prisma.inventoryTransaction.deleteMany(),
+      prisma.bOMItem.deleteMany(),
+      prisma.bOM.deleteMany(),
+      prisma.material.deleteMany(),
+      prisma.product.deleteMany(),
+      prisma.category.deleteMany(),
+      prisma.branch.deleteMany()
+    ]);
+    res.json({ success: true, message: 'All data cleared except users' });
   } catch (err) {
     handleApiError(res, err);
   }

@@ -18,6 +18,7 @@ import { UserManager } from './components/UserManager';
 import { ManufacturingFinancials } from './components/ManufacturingFinancials';
 import { ExpenseManager } from './components/ExpenseManager';
 import { Login } from './components/Login';
+import { DataAdminPanel } from './components/DataAdminPanel';
 
 const resolveInitialTab = (userRole?: string): string => {
   const hash = window.location.hash.replace('#', '');
@@ -201,6 +202,21 @@ export default function App() {
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
+  if (currentUser.role === 'DATA_ADMIN') {
+    return (
+      <>
+        <Toaster 
+          position="top-right" 
+          toastOptions={{
+            className: 'text-sm font-sans font-medium',
+            duration: 3000,
+          }} 
+        />
+        <DataAdminPanel />
+      </>
+    );
+  }
+
   const drivers = users.filter((u) => u.role === 'DELIVERY_DRIVER');
 
   return (
@@ -238,7 +254,7 @@ export default function App() {
 
         {/* Scrollable Page Content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <div className={activeTab === 'tasks' ? 'w-full' : 'max-w-7xl mx-auto'}>
+          <div className="w-full">
             {activeTab === 'dashboard' && currentUser.role !== 'DELIVERY_DRIVER' && (
               <AdminDashboard
                 orders={orders}

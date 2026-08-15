@@ -35,7 +35,8 @@ const DEFAULT_ROLE_PERMISSIONS: Record<Role, string[]> = {
   FINANCE: ['dashboard', 'inventory', 'materials', 'manufacturing', 'orders', 'reports'],
   WAREHOUSE_WORKER: ['dashboard', 'tasks', 'inventory', 'materials', 'manufacturing', 'orders', 'reports'],
   DELIVERY_DRIVER: ['dashboard', 'tasks', 'deliveries'],
-  PRODUCTION: ['dashboard', 'tasks', 'manufacturing']
+  PRODUCTION: ['dashboard', 'tasks', 'manufacturing'],
+  DATA_ADMIN: []
 };
 
 export const UserManager: React.FC<UserManagerProps> = ({ currentUser }) => {
@@ -189,6 +190,8 @@ export const UserManager: React.FC<UserManagerProps> = ({ currentUser }) => {
         return 'bg-emerald-100 text-emerald-700 border-emerald-200';
       case 'PRODUCTION':
         return 'bg-pink-100 text-pink-700 border-pink-200';
+      case 'DATA_ADMIN':
+        return 'bg-red-100 text-red-700 border-red-200';
     }
   };
 
@@ -199,6 +202,7 @@ export const UserManager: React.FC<UserManagerProps> = ({ currentUser }) => {
       case 'WAREHOUSE_WORKER': return 'Агуулахын ажилтан';
       case 'DELIVERY_DRIVER': return 'Хүргэлтийн жолооч';
       case 'PRODUCTION': return 'Үйлдвэрлэлийн ажилтан';
+      case 'DATA_ADMIN': return 'Дата Админ';
     }
   };
 
