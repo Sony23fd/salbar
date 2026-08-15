@@ -212,7 +212,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ currentUser }) =
                   acc[exp.type] = (acc[exp.type] || 0) + Number(exp.amount);
                   return acc;
                 }, {} as Record<string, number>)
-              ).sort((a, b) => b[1] - a[1]).map(([type, amount]) => (
+              ).sort((a, b) => (b[1] as number) - (a[1] as number)).map(([type, amount]) => (
                 <div key={type} className="flex justify-between items-center text-xs">
                   <span className="text-slate-600 font-medium">{type}</span>
                   <span className="font-black text-slate-900 font-mono">{amount.toLocaleString()}₮</span>

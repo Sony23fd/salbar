@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';
 import { api } from './lib/api';
 import { User, Branch, Product, Order, InactiveBranchAlert } from './types/wms';
 import { Sidebar } from './components/Sidebar';

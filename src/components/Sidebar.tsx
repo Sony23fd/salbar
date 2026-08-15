@@ -38,7 +38,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
     ? currentUser.permissions
     : (DEFAULT_ROLE_PERMISSIONS[currentUser.role] || DEFAULT_ROLE_PERMISSIONS.ADMIN);
 
-  const menuGroups = [
+  interface MenuItem {
+    id: string;
+    icon: React.ElementType;
+    label: string;
+    badge?: number | null | boolean;
+    badgeColor?: string;
+    iconColor?: string;
+  }
+
+  interface MenuGroup {
+    title: string;
+    items: MenuItem[];
+  }
+
+  const menuGroups: MenuGroup[] = [
     {
       title: 'ҮНДСЭН',
       items: [

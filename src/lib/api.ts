@@ -11,6 +11,38 @@ const getHeaders = () => {
 };
 
 export const api = {
+  async get(url: string): Promise<any> {
+    const res = await fetch(`${API_BASE}${url}`, { headers: getHeaders() });
+    if (!res.ok) throw new Error(await res.text());
+    return { data: await res.json() };
+  },
+  async post(url: string, data?: any): Promise<any> {
+    const res = await fetch(`${API_BASE}${url}`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: data ? JSON.stringify(data) : undefined,
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return { data: await res.json() };
+  },
+  async put(url: string, data?: any): Promise<any> {
+    const res = await fetch(`${API_BASE}${url}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: data ? JSON.stringify(data) : undefined,
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return { data: await res.json() };
+  },
+  async delete(url: string): Promise<any> {
+    const res = await fetch(`${API_BASE}${url}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return { data: await res.json() };
+  },
+
   async getExpiringBatches(): Promise<any[]> {
     const res = await fetch(`${API_BASE}/inventory/expiring-batches`, { headers: getHeaders() });
     if (!res.ok) throw new Error(await res.text());

@@ -44,6 +44,7 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
 
   // Form states for New Material
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [sku, setSku] = useState('');
   const [materialType, setMaterialType] = useState<MaterialType>('RAW_MATERIAL');
   const [unit, setUnit] = useState('кг');
