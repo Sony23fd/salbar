@@ -34,6 +34,8 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
   const [unitPrice, setUnitPrice] = useState<number | ''>('');
   const [stockQuantity, setStockQuantity] = useState<number | ''>('');
   const [minStockLevel, setMinStockLevel] = useState<number | ''>(5);
+  const [commissionPercent, setCommissionPercent] = useState<number | ''>('');
+  const [vatPercent, setVatPercent] = useState<number | ''>('');
   const [categoryId, setCategoryId] = useState('');
   const [materialType, setMaterialType] = useState<MaterialType>('FINISHED_GOOD');
   const [unit, setUnit] = useState<string>('ш');
@@ -80,6 +82,8 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
         categoryId: categoryId || undefined,
         materialType: materialType,
         unit: unit || 'ш',
+        commissionPercent: materialType === 'FINISHED_GOOD' ? Number(commissionPercent) : undefined,
+        vatPercent: materialType === 'FINISHED_GOOD' ? Number(vatPercent) : undefined,
         isActive: true
       });
 
@@ -91,6 +95,8 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
         setUnitPrice('');
         setStockQuantity('');
         setMinStockLevel(5);
+        setCommissionPercent('');
+        setVatPercent('');
         setCategoryId('');
         setMaterialType('FINISHED_GOOD');
         setUnit('ш');
@@ -108,6 +114,8 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
     setDescription(prod.description || '');
     setUnitPrice(prod.unitPrice);
     setMinStockLevel(prod.minStockLevel);
+    setCommissionPercent(prod.commissionPercent !== undefined ? prod.commissionPercent : '');
+    setVatPercent(prod.vatPercent !== undefined ? prod.vatPercent : '');
     setCategoryId(prod.categoryId || '');
     setMaterialType((prod.materialType as MaterialType) || 'FINISHED_GOOD');
     setUnit(prod.unit || 'ш');
@@ -140,7 +148,9 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
         minStockLevel: Number(minStockLevel),
         categoryId: categoryId || undefined,
         materialType: materialType,
-        unit: unit || 'ш'
+        unit: unit || 'ш',
+        commissionPercent: materialType === 'FINISHED_GOOD' ? Number(commissionPercent) : undefined,
+        vatPercent: materialType === 'FINISHED_GOOD' ? Number(vatPercent) : undefined,
       });
       toast.success('Бараа / материалын мэдээлэл шинэчлэгдлээ!');
       setEditingProduct(null);
@@ -350,6 +360,20 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                             {prod.description}
                           </div>
                         )}
+                        {(!prod.materialType || prod.materialType === 'FINISHED_GOOD') && (prod.commissionPercent !== undefined || prod.vatPercent !== undefined) && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {prod.commissionPercent !== undefined && prod.commissionPercent > 0 && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                                Борл/шимтгэл: {prod.commissionPercent}%
+                              </span>
+                            )}
+                            {prod.vatPercent !== undefined && prod.vatPercent > 0 && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-200 text-slate-800 border border-slate-300">
+                                НӨАТ: {prod.vatPercent}%
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
 
                       <td className="p-4">
@@ -468,10 +492,6 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
             </div>
 
             <form onSubmit={handleCreateProduct} className="p-6 space-y-4">
-              
-
-              
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">SKU Код *</label>
@@ -603,6 +623,36 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                 </div>
               </div>
 
+              {materialType === 'FINISHED_GOOD' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2 sm:col-span-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Борлуулалтын хувь (%)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={commissionPercent}
+                      onChange={(e) => setCommissionPercent(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="Жишээ нь: 5"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-mono"
+                    />
+                    <p className="text-[10px] text-slate-500 mt-1">Борлуулалтын шимтгэл</p>
+                  </div>
+
+                  <div className="col-span-2 sm:col-span-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">НӨАТ (%)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={vatPercent}
+                      onChange={(e) => setVatPercent(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="Жишээ нь: 10"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-slate-500 font-mono"
+                    />
+                    <p className="text-[10px] text-slate-500 mt-1">Стандарт: 10%</p>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"
@@ -638,10 +688,6 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
             </div>
 
             <form onSubmit={handleReplenishStock} className="p-6 space-y-4">
-              
-
-              
-
               <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1">
                 <div className="text-xs text-slate-500 font-medium">Барааны нэр</div>
                 <div className="text-sm font-bold text-slate-900">{replenishTarget.name}</div>
@@ -723,8 +769,6 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
             </div>
             
             <form onSubmit={handleUpdateProduct} className="p-6 space-y-5">
-              
-              
               {editWarning && (
                 <div className="bg-amber-50 text-amber-800 p-4 rounded-xl text-xs font-semibold flex items-start gap-2 border border-amber-200">
                   <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
@@ -794,6 +838,33 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                     ))}
                   </select>
                 </div>
+
+                {materialType === 'FINISHED_GOOD' && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Борлуулалтын хувь (%)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={commissionPercent}
+                        onChange={(e) => setCommissionPercent(e.target.value === '' ? '' : Number(e.target.value))}
+                        placeholder="5"
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">НӨАТ (%)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={vatPercent}
+                        onChange={(e) => setVatPercent(e.target.value === '' ? '' : Number(e.target.value))}
+                        placeholder="10"
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-slate-500 font-medium"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Тайлбар</label>

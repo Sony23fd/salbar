@@ -145,12 +145,13 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
   // Calculate live total price for order creation modal
   const selectedBranchData = branches.find(b => b.id === selectedBranchId);
   const profitPercent = selectedBranchData?.profitPercent || 0;
-  const commissionPercent = selectedBranchData?.commissionPercent || 0;
-  const vatPercent = selectedBranchData?.vatPercent || 0;
 
   const liveTotalAmount = orderItems.reduce((sum, item) => {
     const p = products.find((prod) => prod.id === item.productId);
     if (!p) return sum;
+    const commissionPercent = p.commissionPercent || 0;
+    const vatPercent = p.vatPercent || 0;
+
     const baseCost = p.costPrice && p.costPrice > 0 ? p.costPrice : p.unitPrice;
     const profitAmt = baseCost * (profitPercent / 100);
     const costPlusProfit = baseCost + profitAmt;
@@ -720,6 +721,9 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
                     const selectedProd = products.find((p) => p.id === item.productId);
                     let rowTotal = 0;
                     if (selectedProd) {
+                      const commissionPercent = selectedProd.commissionPercent || 0;
+                      const vatPercent = selectedProd.vatPercent || 0;
+
                       const baseCost = selectedProd.costPrice && selectedProd.costPrice > 0 ? selectedProd.costPrice : selectedProd.unitPrice;
                       const profitAmt = baseCost * (profitPercent / 100);
                       const costPlusProfit = baseCost + profitAmt;
@@ -740,6 +744,9 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
                             required
                           >
                             {products.map((p) => {
+                              const commissionPercent = p.commissionPercent || 0;
+                              const vatPercent = p.vatPercent || 0;
+
                               const baseCost = p.costPrice && p.costPrice > 0 ? p.costPrice : p.unitPrice;
                               const profitAmt = baseCost * (profitPercent / 100);
                               const costPlusProfit = baseCost + profitAmt;

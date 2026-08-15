@@ -40,8 +40,6 @@ export interface Branch {
   isActive: boolean;
   marginPercent?: number;
   profitPercent?: number;
-  commissionPercent?: number;
-  vatPercent?: number;
   lastActivityAt?: string | Date;
   orders?: Order[];
   inventory?: BranchInventory[];
@@ -77,6 +75,8 @@ export interface Product {
   stockSecondaryQuantity?: number;
   minStockLevel: number;
   isActive: boolean;
+  commissionPercent?: number;
+  vatPercent?: number;
   categoryId?: string;
   category?: Category;
   createdAt: string;

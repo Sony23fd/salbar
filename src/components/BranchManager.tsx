@@ -42,8 +42,6 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
   const [phone, setPhone] = useState('');
   const [type, setType] = useState<BranchType>('BRANCH');
   const [profitPercent, setProfitPercent] = useState<number>(0);
-  const [commissionPercent, setCommissionPercent] = useState<number>(0);
-  const [vatPercent, setVatPercent] = useState<number>(10);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isAdmin = currentUser.role === 'ADMIN';
@@ -68,8 +66,6 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
       setPhone(branch.phone);
       setType(branch.type);
       setProfitPercent(branch.profitPercent || 0);
-      setCommissionPercent(branch.commissionPercent || 0);
-      setVatPercent(branch.vatPercent ?? 10);
     } else {
       setEditingBranch(null);
       setName('');
@@ -79,8 +75,6 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
       setPhone('');
       setType('BRANCH');
       setProfitPercent(0);
-      setCommissionPercent(0);
-      setVatPercent(10);
     }
     setShowModal(true);
   };
@@ -107,12 +101,12 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
     setIsSubmitting(true);
     try {
       if (editingBranch) {
-        await api.updateBranch(editingBranch.id, { name, location, contactPerson, email, phone, type, profitPercent, commissionPercent, vatPercent });
+        await api.updateBranch(editingBranch.id, { name, location, contactPerson, email, phone, type, profitPercent });
         if (selectedBranch?.id === editingBranch.id) {
             // refresh branch info in drawer will happen through onRefresh
         }
       } else {
-        await api.addBranch({ name, location, contactPerson, email, phone, type, profitPercent, commissionPercent, vatPercent });
+        await api.addBranch({ name, location, contactPerson, email, phone, type, profitPercent });
       }
       onRefresh();
       closeModal();
@@ -285,16 +279,7 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
                       Ашиг: {selectedBranch.profitPercent}%
                     </span>
                   )}
-                  {(selectedBranch.commissionPercent !== undefined && selectedBranch.commissionPercent > 0) && (
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">
-                      Борл/шимтгэл: {selectedBranch.commissionPercent}%
-                    </span>
-                  )}
-                  {(selectedBranch.vatPercent !== undefined && selectedBranch.vatPercent > 0) && (
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-800">
-                      НӨАТ: {selectedBranch.vatPercent}%
-                    </span>
-                  )}
+
                 </div>
               </div>
               <button 
@@ -600,7 +585,7 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
                   </select>
                 </div>
 
-                <div className="col-span-2 sm:col-span-1">
+                <div className="col-span-2 sm:col-span-2">
                   <label className="block text-xs font-bold text-slate-700 mb-1">Ашгийн хувь (%)</label>
                   <input
                     type="number"
@@ -611,32 +596,6 @@ export const BranchManager: React.FC<BranchManagerProps> = ({
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-emerald-500 font-mono"
                   />
                   <p className="text-[10px] text-slate-500 mt-1">Өртгөөс нэмэгдэх ашиг</p>
-                </div>
-
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Борлуулалтын хувь (%)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={commissionPercent}
-                    onChange={(e) => setCommissionPercent(parseFloat(e.target.value) || 0)}
-                    placeholder="Жишээ нь: 5"
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-mono"
-                  />
-                  <p className="text-[10px] text-slate-500 mt-1">Борлуулалтын шимтгэл</p>
-                </div>
-
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-xs font-bold text-slate-700 mb-1">НӨАТ (%)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={vatPercent}
-                    onChange={(e) => setVatPercent(parseFloat(e.target.value) || 0)}
-                    placeholder="Жишээ нь: 10"
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-slate-500 font-mono"
-                  />
-                  <p className="text-[10px] text-slate-500 mt-1">Стандарт: 10%</p>
                 </div>
 
                 <div className="col-span-2 sm:col-span-1">

@@ -239,10 +239,19 @@ app.get('/api/branches', authenticate(), async (req, res) => {
 
 // Create new branch/customer
 app.post('/api/branches', authenticate(['ADMIN']), async (req, res) => {
-  const { name, location, contactPerson, email, phone, type, marginPercent } = req.body;
+  const { name, location, contactPerson, email, phone, type, marginPercent, profitPercent } = req.body;
   try {
     const newBranch = await prisma.branch.create({
-      data: { name, location, contactPerson, email, phone, type, marginPercent: Number(marginPercent || 0) },
+      data: { 
+        name, 
+        location, 
+        contactPerson, 
+        email, 
+        phone, 
+        type, 
+        marginPercent: Number(marginPercent || 0),
+        profitPercent: Number(profitPercent || 0)
+      },
     });
     res.json(newBranch);
   } catch (error: any) {
@@ -253,11 +262,21 @@ app.post('/api/branches', authenticate(['ADMIN']), async (req, res) => {
 // Update branch/customer
 app.put('/api/branches/:id', authenticate(['ADMIN']), async (req, res) => {
   const { id } = req.params;
-  const { name, location, contactPerson, email, phone, type, isActive, marginPercent } = req.body;
+  const { name, location, contactPerson, email, phone, type, isActive, marginPercent, profitPercent } = req.body;
   try {
     const updated = await prisma.branch.update({
       where: { id },
-      data: { name, location, contactPerson, email, phone, type, isActive, marginPercent: Number(marginPercent || 0) },
+      data: { 
+        name, 
+        location, 
+        contactPerson, 
+        email, 
+        phone, 
+        type, 
+        isActive, 
+        marginPercent: Number(marginPercent || 0),
+        profitPercent: Number(profitPercent || 0)
+      },
     });
     res.json(updated);
   } catch (err) {
@@ -486,7 +505,9 @@ app.post('/api/products', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE'])
           stockQuantity: data.stockQuantity,
           initialStock: data.stockQuantity || 0,
           minStockLevel: data.minStockLevel || 5,
-          categoryId: data.categoryId || null
+          categoryId: data.categoryId || null,
+          commissionPercent: data.commissionPercent || 0,
+          vatPercent: data.vatPercent || 0
         },
         include: { category: true }
       });
@@ -530,7 +551,9 @@ app.put('/api/products/:id', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE
         unit: data.unit,
         materialType: data.materialType,
         minStockLevel: data.minStockLevel,
-        categoryId: data.categoryId || null
+        categoryId: data.categoryId || null,
+        commissionPercent: data.commissionPercent !== undefined ? data.commissionPercent : undefined,
+        vatPercent: data.vatPercent !== undefined ? data.vatPercent : undefined
       },
       include: { category: true }
     });
@@ -927,12 +950,13 @@ app.post('/api/orders', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async (req,
     const itemsData = [];
     
     const profitPercent = branch.profitPercent || 0;
-    const commissionPercent = branch.commissionPercent || 0;
-    const vatPercent = branch.vatPercent || 0;
     
     for (const item of itemsInput) {
       const product = await prisma.product.findUnique({ where: { id: item.productId } });
       if (!product) return res.status(404).json({ error: `Product ${item.productId} not found` });
+      
+      const commissionPercent = product.commissionPercent || 0;
+      const vatPercent = product.vatPercent || 0;
       
       const baseCost = Number(product.costPrice) > 0 ? Number(product.costPrice) : Number(product.unitPrice);
       

@@ -102,8 +102,6 @@ model Branch {
   isActive       Boolean    @default(true)
   marginPercent  Float      @default(0)
   profitPercent  Float      @default(0)
-  commissionPercent Float   @default(0)
-  vatPercent     Float      @default(0)
   lastActivityAt DateTime  @default(now())
   orders         Order[]
   inventory      BranchInventory[]
@@ -156,6 +154,8 @@ model Product {
   initialStock  Float          @default(0) // Эхний үлдэгдэл
   minStockLevel Float          @default(5)
   isActive      Boolean      @default(true)
+  commissionPercent Float      @default(0)
+  vatPercent    Float        @default(0)
   
   categoryId    String?
   category      Category?              @relation(fields: [categoryId], references: [id])

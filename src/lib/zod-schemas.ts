@@ -18,6 +18,8 @@ export const ProductSchema = z.object({
     .nonnegative('Stock quantity cannot be negative'),
   categoryId: z.string().optional(),
   minStockLevel: z.coerce.number().optional(),
+  commissionPercent: z.coerce.number().optional(),
+  vatPercent: z.coerce.number().optional(),
 });
 
 export type ProductInput = z.infer<typeof ProductSchema>;
