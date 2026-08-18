@@ -2528,10 +2528,11 @@ app.post('/api/data-admin/clear', authenticate(['DATA_ADMIN']), async (req, res)
   }
 });
 
-// Start Server conditionally (for local development)
-if (process.env.NODE_ENV !== 'production' && process.env.VERCEL_ENV !== 'production') {
-  app.listen(3001, () => {
-    console.log(`Backend server running on http://localhost:3001`);
+// Start Server conditionally (for local development or VPS)
+if (process.env.VERCEL_ENV !== 'production') {
+  const PORT = process.env.PORT || 3001;
+  app.listen(PORT, () => {
+    console.log(`Backend server running on http://localhost:${PORT}`);
   });
 }
 
