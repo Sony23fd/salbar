@@ -109,7 +109,7 @@ async function main() {
         previousStock: 0,
         newStock: proc.qty,
         userId: userId,
-        unitPrice: proc.prod.costPrice,
+        unitPrice: Number(proc.prod.costPrice),
         totalPrice: Number(proc.prod.costPrice) * proc.qty,
         notes: 'Эхний татан авалт (Демо)',
       }

@@ -46,6 +46,8 @@ export const AuditLogExplorer: React.FC<AuditLogExplorerProps> = ({ orders, prod
     WAREHOUSE_WORKER: 'bg-blue-50 text-blue-700 border-blue-200',
     DELIVERY_DRIVER: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     FINANCE: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+    PRODUCTION: 'bg-purple-50 text-purple-700 border-purple-200',
+    DATA_ADMIN: 'bg-red-50 text-red-700 border-red-200',
   };
 
   const roleTranslations: Record<Role, string> = {
@@ -53,6 +55,8 @@ export const AuditLogExplorer: React.FC<AuditLogExplorerProps> = ({ orders, prod
     WAREHOUSE_WORKER: 'Агуулахын ажилтан',
     DELIVERY_DRIVER: 'Жолооч',
     FINANCE: 'Санхүү',
+    PRODUCTION: 'Үйлдвэрлэл',
+    DATA_ADMIN: 'Өгөгдлийн админ',
   };
 
   const [orderStatuses, setOrderStatuses] = useState<OrderStatusConfig[]>([]);

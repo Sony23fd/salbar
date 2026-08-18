@@ -3,8 +3,9 @@ import { Product, User, MaterialType } from '../types/wms';
 import { registerProduct, replenishStock } from '../actions/inventory';
 import { db } from '../lib/db';
 import { api } from '../lib/api';
-import { Package, Search, Plus, RefreshCw, X, ShieldAlert, CheckCircle2, AlertTriangle, ArrowUpRight, ArrowDownRight, Hash, Tag, FileText, Banknote, History, ExternalLink, Pencil, AlertCircle, ClipboardList, Layers, Trash2, RefreshCcw } from 'lucide-react';
+import { Package, Search, Plus, RefreshCw, X, ShieldAlert, CheckCircle2, AlertTriangle, ArrowUpRight, ArrowDownRight, Hash, Tag, FileText, Banknote, History, ExternalLink, Pencil, AlertCircle, ClipboardList, Layers, Trash2, RefreshCcw, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { PricingSettingsModal } from './PricingSettingsModal';
 
 interface InventoryManagerProps {
   products: Product[];
@@ -21,6 +22,8 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [materialFilter, setMaterialFilter] = useState<string>('ALL');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showReplenishModal, setShowReplenishModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [replenishTarget, setReplenishTarget] = useState<Product | null>(null);
   const [showInactive, setShowInactive] = useState(false);
 
@@ -34,6 +37,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
   const [costPrice, setCostPrice] = useState<number | ''>('');
   const [stockQuantity, setStockQuantity] = useState<number | ''>('');
   const [minStockLevel, setMinStockLevel] = useState<number | ''>(5);
+  const [profitPercent, setProfitPercent] = useState<number | ''>('');
   const [commissionPercent, setCommissionPercent] = useState<number | ''>('');
   const [vatPercent, setVatPercent] = useState<number | ''>('');
   const [categoryId, setCategoryId] = useState('');
@@ -77,11 +81,13 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
         name,
         description,
         costPrice: materialType !== 'FINISHED_GOOD' ? Number(costPrice) : undefined,
+        unitPrice: 0,
         stockQuantity: Number(stockQuantity),
         minStockLevel: Number(minStockLevel),
         categoryId: categoryId || undefined,
         materialType: materialType,
         unit: unit || 'ш',
+        profitPercent: materialType === 'FINISHED_GOOD' ? Number(profitPercent) : undefined,
         commissionPercent: materialType === 'FINISHED_GOOD' ? Number(commissionPercent) : undefined,
         vatPercent: materialType === 'FINISHED_GOOD' ? Number(vatPercent) : undefined,
         isActive: true
@@ -95,6 +101,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
         setCostPrice('');
         setStockQuantity('');
         setMinStockLevel(5);
+        setProfitPercent('');
         setCommissionPercent('');
         setVatPercent('');
         setCategoryId('');
@@ -114,6 +121,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
     setDescription(prod.description || '');
     setCostPrice(prod.costPrice);
     setMinStockLevel(prod.minStockLevel);
+    setProfitPercent(prod.profitPercent !== undefined ? prod.profitPercent : '');
     setCommissionPercent(prod.commissionPercent !== undefined ? prod.commissionPercent : '');
     setVatPercent(prod.vatPercent !== undefined ? prod.vatPercent : '');
     setCategoryId(prod.categoryId || '');
@@ -149,6 +157,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
         categoryId: categoryId || undefined,
         materialType: materialType,
         unit: unit || 'ш',
+        profitPercent: materialType === 'FINISHED_GOOD' ? Number(profitPercent) : undefined,
         commissionPercent: materialType === 'FINISHED_GOOD' ? Number(commissionPercent) : undefined,
         vatPercent: materialType === 'FINISHED_GOOD' ? Number(vatPercent) : undefined,
       });
@@ -267,15 +276,26 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
           </div>
         </div>
 
-        {canEdit && (
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            Шинэ бараа бүртгэх
-          </button>
-        )}
+        <div className="flex gap-2">
+          {currentUser.role === 'ADMIN' && (
+            <button
+              onClick={() => setShowSettingsModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all shadow-sm"
+            >
+              <Settings className="w-4 h-4" />
+              Тохиргоо
+            </button>
+          )}
+          {canEdit && (
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Шинэ бүтээгдэхүүн
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filters & Search */}
@@ -360,11 +380,16 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                             {prod.description}
                           </div>
                         )}
-                        {(!prod.materialType || prod.materialType === 'FINISHED_GOOD') && (prod.commissionPercent !== undefined || prod.vatPercent !== undefined) && (
+                        {(!prod.materialType || prod.materialType === 'FINISHED_GOOD') && (prod.profitPercent !== undefined || prod.commissionPercent !== undefined || prod.vatPercent !== undefined) && (
                           <div className="flex flex-wrap gap-1 mt-1.5">
+                            {prod.profitPercent !== undefined && prod.profitPercent > 0 && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-100 text-green-800 border border-green-200">
+                                Ашиг: {prod.profitPercent}%
+                              </span>
+                            )}
                             {prod.commissionPercent !== undefined && prod.commissionPercent > 0 && (
                               <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
-                                Борл/шимтгэл: {prod.commissionPercent}%
+                                Борлуулалт: {prod.commissionPercent}%
                               </span>
                             )}
                             {prod.vatPercent !== undefined && prod.vatPercent > 0 && (
@@ -626,8 +651,21 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
               </div>
 
               {materialType === 'FINISHED_GOOD' && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2 sm:col-span-1">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="col-span-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Ашгийн хувь (%)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={profitPercent}
+                      onChange={(e) => setProfitPercent(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="Жишээ нь: 10"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-mono"
+                    />
+                    <p className="text-[10px] text-slate-500 mt-1">Үндсэн ашиг</p>
+                  </div>
+
+                  <div className="col-span-1">
                     <label className="block text-xs font-bold text-slate-700 mb-1">Борлуулалтын хувь (%)</label>
                     <input
                       type="number"
@@ -635,13 +673,14 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                       value={commissionPercent}
                       onChange={(e) => setCommissionPercent(e.target.value === '' ? '' : Number(e.target.value))}
                       placeholder="Жишээ нь: 5"
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-mono"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-medium"
                     />
-                    <p className="text-[10px] text-slate-500 mt-1">Борлуулалтын шимтгэл</p>
                   </div>
 
-                  <div className="col-span-2 sm:col-span-1">
-                    <label className="block text-xs font-bold text-slate-700 mb-1">НӨАТ (%)</label>
+                  <div className="col-span-1">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
+                      НӨАТ (%)
+                    </label>
                     <input
                       type="number"
                       step="0.01"
@@ -650,7 +689,6 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                       placeholder="Жишээ нь: 10"
                       className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-slate-500 font-mono"
                     />
-                    <p className="text-[10px] text-slate-500 mt-1">Стандарт: 10%</p>
                   </div>
                 </div>
               )}
@@ -899,6 +937,9 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
             </form>
           </div>
         </div>
+      )}
+      {showSettingsModal && (
+        <PricingSettingsModal onClose={() => setShowSettingsModal(false)} />
       )}
     </div>
   );

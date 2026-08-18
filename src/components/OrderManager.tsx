@@ -32,13 +32,14 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [branchFilter, setBranchFilter] = useState<string>('ALL');
   const [showCreateModal, setShowCreateModal] = useState<boolean>(!!presetBranchId);
+  const finishedProducts = products.filter((p) => p.materialType === 'FINISHED_GOOD');
 
   // New Order Form state
   const [selectedBranchId, setSelectedBranchId] = useState<string>(
     presetBranchId || branches[0]?.id || ''
   );
   const [orderItems, setOrderItems] = useState<{ productId: string; quantity: number }[]>([
-    { productId: products[0]?.id || '', quantity: 1 },
+    { productId: finishedProducts[0]?.id || '', quantity: 1 },
   ]);
   const [notes, setNotes] = useState('');
   
@@ -57,6 +58,7 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
   // Dynamic Statuses
   const [orderStatuses, setOrderStatuses] = useState<OrderStatusConfig[]>([]);
   const [showStatusSettings, setShowStatusSettings] = useState(false);
+  const [pricingOrder, setPricingOrder] = useState<string[]>(['profit', 'commission', 'vat', 'branchMargin']);
 
   React.useEffect(() => {
     const fetchStatuses = async () => {
@@ -67,7 +69,20 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
         console.error('Failed to load order statuses', err);
       }
     };
+    
+    const fetchPricingConfig = async () => {
+      try {
+        const setting = await api.getSystemSetting('PRICING_ORDER');
+        if (setting && setting.value) {
+          setPricingOrder(JSON.parse(setting.value));
+        }
+      } catch (err) {
+        console.error('Failed to load pricing config', err);
+      }
+    };
+
     fetchStatuses();
+    fetchPricingConfig();
   }, []);
 
   // Barcode Scanner Listener
@@ -87,7 +102,7 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
         if (barcodeInput.trim()) {
           // Process barcode
           const scannedSku = barcodeInput.trim();
-          const product = products.find(p => p.sku === scannedSku || p.sku.toLowerCase() === scannedSku.toLowerCase());
+          const product = finishedProducts.find(p => p.sku === scannedSku || p.sku.toLowerCase() === scannedSku.toLowerCase());
           
           if (product) {
             setOrderItems(prev => {
@@ -144,28 +159,40 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
 
   // Calculate live total price for order creation modal
   const selectedBranchData = branches.find(b => b.id === selectedBranchId);
-  const profitPercent = selectedBranchData?.profitPercent || 0;
+  const branchProfitPercent = selectedBranchData?.profitPercent || 0;
+
+  const calculateEffectivePrice = (product: Product, branchMargin: number) => {
+    let currentPrice = product.costPrice && Number(product.costPrice) > 0 
+      ? Number(product.costPrice) 
+      : Number(product.unitPrice);
+    
+    for (const step of pricingOrder) {
+      if (step === 'profit') {
+        const pct = product.profitPercent || 0;
+        currentPrice += currentPrice * (pct / 100);
+      } else if (step === 'commission') {
+        const pct = product.commissionPercent || 0;
+        currentPrice += currentPrice * (pct / 100);
+      } else if (step === 'vat') {
+        const pct = product.vatPercent || 0;
+        currentPrice += currentPrice * (pct / 100);
+      } else if (step === 'branchMargin') {
+        currentPrice += currentPrice * (branchMargin / 100);
+      }
+    }
+    return currentPrice;
+  };
 
   const liveTotalAmount = orderItems.reduce((sum, item) => {
     const p = products.find((prod) => prod.id === item.productId);
     if (!p) return sum;
-    const commissionPercent = p.commissionPercent || 0;
-    const vatPercent = p.vatPercent || 0;
-
-    const baseCost = p.costPrice && p.costPrice > 0 ? p.costPrice : p.unitPrice;
-    const profitAmt = baseCost * (profitPercent / 100);
-    const costPlusProfit = baseCost + profitAmt;
-    const commissionAmt = costPlusProfit * (commissionPercent / 100);
-    const costPlusProfitPlusComm = costPlusProfit + commissionAmt;
-    const vatAmt = costPlusProfitPlusComm * (vatPercent / 100);
-    const effectivePrice = costPlusProfitPlusComm + vatAmt;
-    
+    const effectivePrice = calculateEffectivePrice(p, branchProfitPercent);
     return sum + (effectivePrice * item.quantity);
   }, 0);
 
   const handleAddItemRow = () => {
-    const unusedProd = products.find((p) => !orderItems.some((i) => i.productId === p.id));
-    setOrderItems([...orderItems, { productId: unusedProd?.id || products[0]?.id || '', quantity: 1 }]);
+    const unusedProd = finishedProducts.find((p) => !orderItems.some((i) => i.productId === p.id));
+    setOrderItems([...orderItems, { productId: unusedProd?.id || finishedProducts[0]?.id || '', quantity: 1 }]);
   };
 
   const handleRemoveItemRow = (index: number) => {
@@ -202,7 +229,7 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
         toast.success('Захиалга амжилттай үүсэгдлээ!');
         setTimeout(() => {
           setShowCreateModal(false);
-          setOrderItems([{ productId: products[0]?.id || '', quantity: 1 }]);
+          setOrderItems([{ productId: finishedProducts[0]?.id || '', quantity: 1 }]);
           setNotes('');
           ;
           onRefresh();
@@ -721,16 +748,7 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
                     const selectedProd = products.find((p) => p.id === item.productId);
                     let rowTotal = 0;
                     if (selectedProd) {
-                      const commissionPercent = selectedProd.commissionPercent || 0;
-                      const vatPercent = selectedProd.vatPercent || 0;
-
-                      const baseCost = selectedProd.costPrice && selectedProd.costPrice > 0 ? selectedProd.costPrice : selectedProd.unitPrice;
-                      const profitAmt = baseCost * (profitPercent / 100);
-                      const costPlusProfit = baseCost + profitAmt;
-                      const commissionAmt = costPlusProfit * (commissionPercent / 100);
-                      const costPlusProfitPlusComm = costPlusProfit + commissionAmt;
-                      const vatAmt = costPlusProfitPlusComm * (vatPercent / 100);
-                      const effectivePrice = costPlusProfitPlusComm + vatAmt;
+                      const effectivePrice = calculateEffectivePrice(selectedProd, branchProfitPercent);
                       rowTotal = effectivePrice * item.quantity;
                     }
 
@@ -743,17 +761,8 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
                             className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900"
                             required
                           >
-                            {products.map((p) => {
-                              const commissionPercent = p.commissionPercent || 0;
-                              const vatPercent = p.vatPercent || 0;
-
-                              const baseCost = p.costPrice && p.costPrice > 0 ? p.costPrice : p.unitPrice;
-                              const profitAmt = baseCost * (profitPercent / 100);
-                              const costPlusProfit = baseCost + profitAmt;
-                              const commissionAmt = costPlusProfit * (commissionPercent / 100);
-                              const costPlusProfitPlusComm = costPlusProfit + commissionAmt;
-                              const vatAmt = costPlusProfitPlusComm * (vatPercent / 100);
-                              const effectivePrice = costPlusProfitPlusComm + vatAmt;
+                            {finishedProducts.map((p) => {
+                              const effectivePrice = calculateEffectivePrice(p, branchProfitPercent);
                               
                               return (
                                 <option key={p.id} value={p.id}>

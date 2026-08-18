@@ -75,12 +75,21 @@ export interface Product {
   stockSecondaryQuantity?: number;
   minStockLevel: number;
   isActive: boolean;
+  profitPercent?: number;
   commissionPercent?: number;
   vatPercent?: number;
   categoryId?: string;
   category?: Category;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SystemSetting {
+  id: string;
+  key: string;
+  value: string;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
 }
 
 export interface BOMItem {

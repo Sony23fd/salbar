@@ -541,8 +541,28 @@ export const api = {
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },
-  async getOrderStatuses(): Promise<any[]> {
-    const res = await fetch(`${API_BASE}/order-statuses`, { headers: getHeaders() });
+
+  async getOrderStatuses() {
+    const res = await fetch(`${API_BASE}/api/order-statuses`, { headers: getHeaders() });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async getSystemSetting(key: string) {
+    const res = await fetch(`${API_BASE}/api/settings/system/${key}`, { headers: getHeaders() });
+    if (!res.ok) {
+      if (res.status === 404) return null;
+      throw new Error(await res.text());
+    }
+    return res.json();
+  },
+
+  async setSystemSetting(key: string, value: string) {
+    const res = await fetch(`${API_BASE}/api/settings/system/${key}`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ value }),
+    });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },

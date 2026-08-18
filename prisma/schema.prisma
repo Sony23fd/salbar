@@ -81,6 +81,7 @@ model User {
   createdTasks         Task[]                 @relation("TaskCreator")
   assignedTasks        Task[]                 @relation("TaskAssignee")
   taskComments         TaskComment[]
+  notifications        Notification[]
   
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
@@ -155,6 +156,7 @@ model Product {
   initialStock  Float          @default(0) // Эхний үлдэгдэл
   minStockLevel Float          @default(5)
   isActive      Boolean      @default(true)
+  profitPercent Float      @default(0)
   commissionPercent Float      @default(0)
   vatPercent    Float        @default(0)
   
@@ -234,6 +236,26 @@ model Order {
   @@index([branchId])
   @@index([createdAt])
   @@map("orders")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      String   @default("INFO")
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model OrderStatusConfig {
