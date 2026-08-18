@@ -776,7 +776,7 @@ app.get('/api/orders', authenticate(), async (req, res) => {
       branch: { select: { name: true, location: true } },
       createdBy: { select: { name: true } },
       deliveredBy: { select: { name: true } },
-      // items and history removed to save bandwidth
+      items: { include: { product: true } }
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -798,7 +798,16 @@ app.get('/api/orders', authenticate(), async (req, res) => {
     deliveredAt: o.deliveredAt,
     createdAt: o.createdAt,
     updatedAt: o.updatedAt,
-    items: [], // Set to empty to avoid breaking types
+    items: o.items.map(i => ({
+      id: i.id,
+      orderId: i.orderId,
+      productId: i.productId,
+      productName: i.product?.name || 'Тодорхойгүй',
+      sku: i.product?.sku || '',
+      quantity: Number(i.quantity),
+      unitPrice: Number(i.unitPrice),
+      totalPrice: Number(i.totalPrice)
+    })),
     history: []
   }));
   
