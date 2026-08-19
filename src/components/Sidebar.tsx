@@ -69,19 +69,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ]
     },
     {
-      title: 'БОРЛУУЛАЛТ & ТҮГЭЭЛТ',
-      items: [
-        { id: 'orders', icon: ShoppingCart, label: 'Салбарын захиалга' },
-        { id: 'deliveries', icon: Truck, label: 'Хүргэлт & Түгээлт' },
-        { id: 'branches', icon: ShieldAlert, label: 'Салбарын идэвх' },
-      ]
-    },
-    {
       title: 'ҮЙЛДВЭРЛЭЛ & ТАЙЛАН',
       items: [
         { id: 'manufacturing', icon: FileSpreadsheet, label: 'Үйлдвэрлэл & Санхүү', iconColor: 'text-amber-500' },
         { id: 'expenses', icon: Receipt, label: 'Зардал бүртгэл', iconColor: 'text-indigo-400' },
         { id: 'reports', icon: FileText, label: 'Хөдөлгөөн & Тайлан', iconColor: 'text-emerald-500' },
+      ]
+    },
+    {
+      title: 'БОРЛУУЛАЛТ & ТҮГЭЭЛТ',
+      items: [
+        { id: 'orders', icon: ShoppingCart, label: 'Салбарын захиалга' },
+        { id: 'deliveries', icon: Truck, label: 'Хүргэлт & Түгээлт' },
+        { id: 'branches', icon: ShieldAlert, label: 'Салбарын идэвх' },
       ]
     },
     {
