@@ -349,6 +349,10 @@ export default function App() {
               <ReportsManager currentUser={currentUser} />
             )}
 
+            {activeTab === 'expenses' && currentUser.role !== 'DELIVERY_DRIVER' && (
+              <ExpenseManager currentUser={currentUser} />
+            )}
+
             {activeTab === 'audit' && currentUser.role === 'ADMIN' && <AuditLogExplorer orders={orders} products={products} />}
           </div>
         </main>
