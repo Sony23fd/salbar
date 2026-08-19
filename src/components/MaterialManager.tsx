@@ -264,7 +264,18 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
               <Minus className="w-4 h-4" /> Зарлагадах / Олгох
             </button>
             <button
-              onClick={() => setShowAddModal(true)}
+              onClick={() => {
+                setName('');
+                setSku('');
+                setDescription('');
+                setUnitPrice(0);
+                setStockQuantity(0);
+                setMinStockLevel(10);
+                setUnit('кг');
+                setMaterialType('RAW_MATERIAL');
+                setEditingMaterial(null);
+                setShowAddModal(true);
+              }}
               className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white transition-colors shadow-xs"
             >
               <Plus className="w-4 h-4" /> Шинэ ТЭМ / Сав баглаа бүртгэх
@@ -396,7 +407,7 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
               <tr>
                 <th className="px-4 py-3 font-bold text-[11px] uppercase">Материалын нэр / SKU</th>
                 <th className="px-4 py-3 font-bold text-[11px] uppercase">Төрөл</th>
-                <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Үлдэгдэл нөөц</th>
+                <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Агуулахын үлдэгдэл</th>
                 <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Нэгж худалдан авах өртөг</th>
                 <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Нийт нөөцийн өртөг</th>
                 <th className="px-4 py-3 font-bold text-[11px] uppercase text-center">Төлөв</th>
@@ -552,15 +563,23 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Хэмжих нэгж (кг, л, ш г.м) *</label>
-                  <input
-                    type="text"
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Хэмжих нэгж *</label>
+                  <select
                     value={unit}
                     onChange={(e) => setUnit(e.target.value)}
-                    placeholder="кг, л, ш..."
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900"
                     required
-                  />
+                  >
+                    <option value="кг">кг</option>
+                    <option value="гр">гр</option>
+                    <option value="л">л</option>
+                    <option value="мл">мл</option>
+                    <option value="ш">ш</option>
+                    <option value="м">м</option>
+                    <option value="уут">уут</option>
+                    <option value="хайрцаг">хайрцаг</option>
+                    <option value="боодол">боодол</option>
+                  </select>
                 </div>
 
                 <div>
@@ -578,7 +597,7 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Анхны нөөцийн тоо</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Эхний үлдэгдэл</label>
                   <input
                     type="number"
                     step="any"
@@ -740,13 +759,22 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Хэмжих нэгж *</label>
-                  <input
-                    type="text"
+                  <select
                     value={unit}
                     onChange={(e) => setUnit(e.target.value)}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900"
                     required
-                  />
+                  >
+                    <option value="кг">кг</option>
+                    <option value="гр">гр</option>
+                    <option value="л">л</option>
+                    <option value="мл">мл</option>
+                    <option value="ш">ш</option>
+                    <option value="м">м</option>
+                    <option value="уут">уут</option>
+                    <option value="хайрцаг">хайрцаг</option>
+                    <option value="боодол">боодол</option>
+                  </select>
                 </div>
 
                 <div>
