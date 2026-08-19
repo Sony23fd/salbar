@@ -277,8 +277,18 @@ export const api = {
     return res.json();
   },
 
-  async getOrderHistoryLogs(limit: number = 500): Promise<any[]> {
-    const res = await fetch(`${API_BASE}/audit/order-history?limit=${limit}`, { headers: getHeaders() });
+  async getAuditOrders(params: { page?: number, limit?: number, branchId?: string, userId?: string, status?: string, startDate?: string, endDate?: string, search?: string }) {
+    const query = new URLSearchParams();
+    if (params.page) query.append('page', params.page.toString());
+    if (params.limit) query.append('limit', params.limit.toString());
+    if (params.branchId) query.append('branchId', params.branchId);
+    if (params.userId) query.append('userId', params.userId);
+    if (params.status) query.append('status', params.status);
+    if (params.startDate) query.append('startDate', params.startDate);
+    if (params.endDate) query.append('endDate', params.endDate);
+    if (params.search) query.append('search', params.search);
+
+    const res = await fetch(`${API_BASE}/audit/orders?${query.toString()}`, { headers: getHeaders() });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },

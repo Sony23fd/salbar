@@ -1328,22 +1328,60 @@ app.post('/api/tasks/:id/comments', authenticate(), async (req, res) => {
 // Audit Logs API Routes
 // ==========================================
 
-app.get('/api/audit/order-history', authenticate(['ADMIN']), async (req, res) => {
+app.get('/api/audit/orders', authenticate(['ADMIN']), async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit as string) || 500;
-    const history = await prisma.orderHistory.findMany({
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const skip = (page - 1) * limit;
+
+    const branchId = req.query.branchId as string;
+    const userId = req.query.userId as string;
+    const status = req.query.status as string;
+    const startDate = req.query.startDate as string;
+    const endDate = req.query.endDate as string;
+    const search = req.query.search as string;
+
+    const where: any = {};
+    if (branchId) where.branchId = branchId;
+    if (status) where.status = status;
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) where.createdAt.gte = new Date(startDate);
+      if (endDate) {
+        const ed = new Date(endDate);
+        ed.setHours(23, 59, 59, 999);
+        where.createdAt.lte = ed;
+      }
+    }
+    if (userId) {
+      where.history = {
+        some: { changedById: userId }
+      };
+    }
+    if (search) {
+      where.OR = [
+        { orderNumber: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const total = await prisma.order.count({ where });
+    const orders = await prisma.order.findMany({
+      where,
+      orderBy: { updatedAt: 'desc' },
+      skip,
       take: limit,
-      orderBy: { createdAt: 'desc' },
       include: {
-        order: {
-          select: { orderNumber: true, branch: { select: { name: true } } }
-        },
-        changedBy: {
-          select: { name: true, role: true }
+        branch: { select: { name: true } },
+        history: {
+          orderBy: { createdAt: 'desc' },
+          include: {
+            changedBy: { select: { name: true, role: true } }
+          }
         }
       }
     });
-    res.json(history);
+
+    res.json({ data: orders, total, page, limit });
   } catch (err) {
     handleApiError(res, err);
   }
