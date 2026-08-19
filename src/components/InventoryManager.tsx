@@ -246,7 +246,12 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
   const canEdit = currentUser.role === 'ADMIN' || currentUser.role === 'WAREHOUSE_WORKER';
 
   const totalInventoryValue = products.reduce((sum, p) => sum + (Number(p.costPrice) * p.stockQuantity), 0);
+  const totalSalesValue = products.reduce((sum, p) => sum + (Number(p.unitPrice || 0) * p.stockQuantity), 0);
+  const totalQuantity = products.reduce((sum, p) => sum + p.stockQuantity, 0);
+
   const filteredInventoryValue = filteredProducts.reduce((sum, p) => sum + (Number(p.costPrice) * p.stockQuantity), 0);
+  const filteredSalesValue = filteredProducts.reduce((sum, p) => sum + (Number(p.unitPrice || 0) * p.stockQuantity), 0);
+  const filteredQuantity = filteredProducts.reduce((sum, p) => sum + p.stockQuantity, 0);
 
   return (
     <div className="space-y-6">
@@ -260,18 +265,30 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
           <p className="text-xs text-slate-500 mt-0.5">
             Барааны код (SKU), үнэ, агуулахын үлдэгдлийн хяналт ба нөхөн татан авалт.
           </p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-800 border border-blue-200 rounded-lg text-sm font-semibold">
-              <span>Нийт агуулахын дүн:</span>
-              <span>₮{totalInventoryValue.toLocaleString()}</span>
+          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="flex flex-col bg-slate-50 border border-slate-200 rounded-xl p-3">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Нийт өртөг</span>
+              <span className="text-sm font-bold text-slate-900">₮{filteredProducts.length !== products.length ? filteredInventoryValue.toLocaleString() : totalInventoryValue.toLocaleString()}</span>
             </div>
-            {filteredProducts.length !== products.length && (
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-800 border border-indigo-200 rounded-lg text-sm font-semibold animate-in fade-in zoom-in-95 duration-200">
-                <span>Шүүгдсэн дүн:</span>
-                <span>₮{filteredInventoryValue.toLocaleString()}</span>
-              </div>
-            )}
+            <div className="flex flex-col bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Нийт борлуулалт</span>
+              <span className="text-sm font-bold text-emerald-900">₮{filteredProducts.length !== products.length ? filteredSalesValue.toLocaleString() : totalSalesValue.toLocaleString()}</span>
+            </div>
+            <div className="flex flex-col bg-blue-50 border border-blue-200 rounded-xl p-3">
+              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">Хүлээгдэж буй ашиг</span>
+              <span className="text-sm font-bold text-blue-900">₮{filteredProducts.length !== products.length ? (filteredSalesValue - filteredInventoryValue).toLocaleString() : (totalSalesValue - totalInventoryValue).toLocaleString()}</span>
+            </div>
+            <div className="flex flex-col bg-purple-50 border border-purple-200 rounded-xl p-3">
+              <span className="text-[10px] font-bold text-purple-600 uppercase tracking-wider mb-1">Нийт тоо ширхэг</span>
+              <span className="text-sm font-bold text-purple-900">{filteredProducts.length !== products.length ? filteredQuantity.toLocaleString() : totalQuantity.toLocaleString()} ш</span>
+            </div>
           </div>
+          {filteredProducts.length !== products.length && (
+            <div className="mt-2 text-xs text-indigo-600 font-semibold bg-indigo-50 px-3 py-1.5 rounded-lg inline-flex items-center gap-1 border border-indigo-100">
+              <Search className="w-3.5 h-3.5" />
+              Дээрх дүн зөвхөн шүүгдсэн {filteredProducts.length} бараанд хамааралтай
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2">
@@ -348,7 +365,8 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                 <th className="p-4 text-right">Өртөг үнэ</th>
                 <th className="p-4 text-right">Зарах үнэ</th>
                 <th className="p-4 text-right">Агуулахын үлдэгдэл</th>
-                <th className="p-4 text-right">Нийт дүн</th>
+                <th className="p-4 text-right">Нийт өртөг дүн</th>
+                <th className="p-4 text-right">Нийт зарах дүн</th>
                 <th className="p-4 text-center">Төлөв</th>
                 {canEdit && <th className="p-4 text-center">Үйлдэл</th>}
               </tr>
@@ -356,7 +374,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
             <tbody className="divide-y divide-slate-100 font-sans">
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 6 : 5} className="p-8 text-center text-slate-500">
+                  <td colSpan={canEdit ? 9 : 8} className="p-8 text-center text-slate-500">
                     Хайлтад тохирох бараа олдсонгүй.
                   </td>
                 </tr>
@@ -421,8 +439,12 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                         </span>
                       </td>
 
-                      <td className="p-4 text-right font-mono font-bold text-sm text-blue-700 bg-blue-50/50">
+                      <td className="p-4 text-right font-mono font-bold text-sm text-slate-700 bg-slate-50">
                         {(Number(prod.costPrice) * prod.stockQuantity).toLocaleString()}₮
+                      </td>
+
+                      <td className="p-4 text-right font-mono font-bold text-sm text-emerald-700 bg-emerald-50/50">
+                        {(Number(prod.unitPrice || 0) * prod.stockQuantity).toLocaleString()}₮
                       </td>
 
                       <td className="p-4 text-center">
