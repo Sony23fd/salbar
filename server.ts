@@ -286,10 +286,10 @@ app.post('/api/branches', authenticate(['ADMIN']), async (req, res) => {
     const newBranch = await prisma.branch.create({
       data: { 
         name, 
-        location, 
-        contactPerson, 
-        email, 
-        phone, 
+        location: location || "", 
+        contactPerson: contactPerson || "", 
+        email: email || "", 
+        phone: phone || "", 
         type, 
         marginPercent: Number(marginPercent || 0),
         profitPercent: Number(profitPercent || 0)
@@ -310,10 +310,10 @@ app.put('/api/branches/:id', authenticate(['ADMIN']), async (req, res) => {
       where: { id },
       data: { 
         name, 
-        location, 
-        contactPerson, 
-        email, 
-        phone, 
+        location: location || "", 
+        contactPerson: contactPerson || "", 
+        email: email || "", 
+        phone: phone || "", 
         type, 
         isActive, 
         marginPercent: Number(marginPercent || 0),
