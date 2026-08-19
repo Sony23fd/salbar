@@ -543,13 +543,13 @@ export const api = {
   },
 
   async getOrderStatuses() {
-    const res = await fetch(`${API_BASE}/api/order-statuses`, { headers: getHeaders() });
+    const res = await fetch(`${API_BASE}/order-statuses`, { headers: getHeaders() });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },
 
   async getSystemSetting(key: string) {
-    const res = await fetch(`${API_BASE}/api/settings/system/${key}`, { headers: getHeaders() });
+    const res = await fetch(`${API_BASE}/settings/system/${key}`, { headers: getHeaders() });
     if (!res.ok) {
       if (res.status === 404) return null;
       throw new Error(await res.text());
@@ -558,7 +558,7 @@ export const api = {
   },
 
   async setSystemSetting(key: string, value: string) {
-    const res = await fetch(`${API_BASE}/api/settings/system/${key}`, {
+    const res = await fetch(`${API_BASE}/settings/system/${key}`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({ value }),
