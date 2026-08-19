@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Order, OrderHistory, Role, Product, OrderStatusConfig, Branch, User as UserModel } from '../types/wms';
 import { api } from '../lib/api';
-import { History, Search, Filter, User, Clock, Package, ChevronDown, ChevronUp, ChevronRight, Activity, CalendarDays, Building2, Eye } from 'lucide-react';
+import { History, Search, Filter, User, Clock, Package, ChevronDown, ChevronUp, ChevronRight, Activity, CalendarDays, Building2, Eye, FileText } from 'lucide-react';
 
 interface AuditLogExplorerProps {
   products: Product[];
