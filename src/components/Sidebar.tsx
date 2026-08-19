@@ -63,7 +63,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       title: 'АГУУЛАХ & БҮРТГЭЛ',
       items: [
-        { id: 'inventory', icon: Package, label: 'Агуулах ба Бараа' },
+        { id: 'inventory', icon: Package, label: 'Бэлэн бүтээгдэхүүн' },
         { id: 'materials', icon: Boxes, label: 'ТЭМ & Сав баглаа', iconColor: 'text-purple-500' },
         { id: 'categories', icon: Package, label: 'Ангилал', iconColor: 'text-orange-500' },
       ]

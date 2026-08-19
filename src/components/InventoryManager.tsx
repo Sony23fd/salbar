@@ -80,16 +80,15 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
         sku,
         name,
         description,
-        costPrice: materialType !== 'FINISHED_GOOD' ? Number(costPrice) : undefined,
         unitPrice: 0,
         stockQuantity: Number(stockQuantity),
         minStockLevel: Number(minStockLevel),
         categoryId: categoryId || undefined,
-        materialType: materialType,
+        materialType: 'FINISHED_GOOD',
         unit: unit || 'ш',
-        profitPercent: materialType === 'FINISHED_GOOD' ? Number(profitPercent) : undefined,
-        commissionPercent: materialType === 'FINISHED_GOOD' ? Number(commissionPercent) : undefined,
-        vatPercent: materialType === 'FINISHED_GOOD' ? Number(vatPercent) : undefined,
+        profitPercent: Number(profitPercent),
+        commissionPercent: Number(commissionPercent),
+        vatPercent: Number(vatPercent),
         isActive: true
       });
 
@@ -152,14 +151,13 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
       await api.updateProduct(editingProduct.id, {
         name,
         description,
-        costPrice: materialType !== 'FINISHED_GOOD' ? Number(costPrice) : undefined,
         minStockLevel: Number(minStockLevel),
         categoryId: categoryId || undefined,
-        materialType: materialType,
+        materialType: 'FINISHED_GOOD',
         unit: unit || 'ш',
-        profitPercent: materialType === 'FINISHED_GOOD' ? Number(profitPercent) : undefined,
-        commissionPercent: materialType === 'FINISHED_GOOD' ? Number(commissionPercent) : undefined,
-        vatPercent: materialType === 'FINISHED_GOOD' ? Number(vatPercent) : undefined,
+        profitPercent: Number(profitPercent),
+        commissionPercent: Number(commissionPercent),
+        vatPercent: Number(vatPercent),
       });
       toast.success('Бараа / материалын мэдээлэл шинэчлэгдлээ!');
       setEditingProduct(null);
@@ -533,20 +531,8 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                   )}
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Бараа / Материалын Төрөл *</label>
-                  <select
-                    value={materialType}
-                    onChange={(e) => setMaterialType(e.target.value as MaterialType)}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-blue-900 focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    <option value="FINISHED_GOOD">📦 Бэлэн бүтээгдэхүүн (Зарах бараа)</option>
-                    <option value="RAW_MATERIAL">🥛 Түүхий эд материал (Орц)</option>
-                    <option value="PACKAGING">📦 Сав баглаа боодол (Орц)</option>
-                    <option value="AUXILIARY">🛠 Туслах материал (Орц)</option>
-                    <option value="SUPPLY">⚙ Хангамжийн материал</option>
-                  </select>
+                <div className="hidden">
+                  {/* materialType hidden since it's forced to FINISHED_GOOD */}
                 </div>
               </div>
 
@@ -614,24 +600,6 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                {materialType !== 'FINISHED_GOOD' && (
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Өртөг үнэ (₮) *</label>
-                    <input
-                      type="number"
-                      step="1"
-                      value={costPrice}
-                      onChange={(e) => setCostPrice(e.target.value === '' ? '' : Number(e.target.value))}
-                      placeholder="12000"
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-mono"
-                      required
-                    />
-                    {fieldErrors['costPrice'] && (
-                      <p className="text-[10px] text-red-600 mt-1">{fieldErrors['costPrice'][0]}</p>
-                    )}
-                  </div>
-                )}
-
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Анхны нөөц *</label>
                   <input
@@ -660,48 +628,46 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                 </div>
               </div>
 
-              {materialType === 'FINISHED_GOOD' && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="col-span-1">
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Ашгийн хувь (%)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={profitPercent}
-                      onChange={(e) => setProfitPercent(e.target.value === '' ? '' : Number(e.target.value))}
-                      placeholder="Жишээ нь: 10"
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-mono"
-                    />
-                    <p className="text-[10px] text-slate-500 mt-1">Үндсэн ашиг</p>
-                  </div>
-
-                  <div className="col-span-1">
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Борлуулалтын хувь (%)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={commissionPercent}
-                      onChange={(e) => setCommissionPercent(e.target.value === '' ? '' : Number(e.target.value))}
-                      placeholder="Жишээ нь: 5"
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-medium"
-                    />
-                  </div>
-
-                  <div className="col-span-1">
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
-                      НӨАТ (%)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={vatPercent}
-                      onChange={(e) => setVatPercent(e.target.value === '' ? '' : Number(e.target.value))}
-                      placeholder="Жишээ нь: 10"
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-slate-500 font-mono"
-                    />
-                  </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="col-span-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Ашгийн хувь (%)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={profitPercent}
+                    onChange={(e) => setProfitPercent(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="Жишээ нь: 10"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-mono"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">Үндсэн ашиг</p>
                 </div>
-              )}
+
+                <div className="col-span-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Борлуулалтын хувь (%)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={commissionPercent}
+                    onChange={(e) => setCommissionPercent(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="Жишээ нь: 5"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-medium"
+                  />
+                </div>
+
+                <div className="col-span-1">
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
+                    НӨАТ (%)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={vatPercent}
+                    onChange={(e) => setVatPercent(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="Жишээ нь: 10"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-slate-500 font-mono"
+                  />
+                </div>
+              </div>
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
                 <button
@@ -849,22 +815,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  {materialType !== 'FINISHED_GOOD' && (
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Өртөг үнэ (₮) *</label>
-                      <input
-                        type="number"
-                        value={costPrice}
-                        onChange={(e) => {
-                          setCostPrice(e.target.value ? Number(e.target.value) : '');
-                          setEditWarning(null);
-                        }}
-                        className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-bold"
-                        required
-                      />
-                    </div>
-                  )}
+                <div className="grid grid-cols-1 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">Босго үлдэгдэл *</label>
                     <input
@@ -891,10 +842,9 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                   </select>
                 </div>
 
-                {materialType === 'FINISHED_GOOD' && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Борлуулалтын хувь (%)</label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Борлуулалтын хувь (%)</label>
                       <input
                         type="number"
                         step="0.01"
@@ -916,8 +866,6 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                       />
                     </div>
                   </div>
-                )}
-
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Тайлбар</label>
                   <textarea
