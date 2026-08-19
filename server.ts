@@ -103,6 +103,44 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
   }
 });
 
+// Helper function to recalculate BOM costs and update unitPrice
+async function recalculateFinishedGoodsCosts() {
+  try {
+    const boms = await prisma.bOM.findMany({
+      include: { items: { include: { ingredient: true } } }
+    });
+    for (const bom of boms) {
+      let totalCost = 0;
+      for (const item of bom.items) {
+        if (item.ingredient) {
+           totalCost += Number(item.ingredient.costPrice) * Number(item.quantityPerUnit);
+        }
+      }
+      if (totalCost > 0) {
+        const product = await prisma.product.findUnique({ where: { id: bom.finishedProductId } });
+        if (product) {
+          const profit = Number(product.profitPercent || 0);
+          const comm = Number(product.commissionPercent || 0);
+          const vat = Number(product.vatPercent || 0);
+          
+          // Formula requested by user: unitPrice = costPrice * (1 + (profit + comm + vat) / 100)
+          const newUnitPrice = totalCost * (1 + (profit + comm + vat) / 100);
+          
+          await prisma.product.update({
+            where: { id: bom.finishedProductId },
+            data: { 
+              costPrice: totalCost,
+              unitPrice: newUnitPrice
+            }
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error recalculating finished goods costs:", error);
+  }
+}
+
 // Users
 app.get('/api/users', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'DELIVERY_DRIVER', 'FINANCE', 'DATA_ADMIN']), async (req, res) => {
   const whereClause: any = { isActive: true };
@@ -563,6 +601,9 @@ app.put('/api/products/:id', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE
       },
       include: { category: true }
     });
+    // Auto recalculate all finished goods costs to ensure accuracy after ingredient prices change
+    await recalculateFinishedGoodsCosts();
+
     res.json(updated);
   } catch (err) {
     handleApiError(res, err, 400);
@@ -1460,6 +1501,9 @@ app.post('/api/boms', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE']), as
       });
     }
 
+    // Auto recalculate all finished goods costs to ensure accuracy
+    await recalculateFinishedGoodsCosts();
+
     res.json(bom);
   } catch (err) {
     handleApiError(res, err, 400);
@@ -1694,6 +1738,9 @@ app.post('/api/procurements', authenticate(['ADMIN', 'WAREHOUSE_WORKER']), async
         }
       }
     }
+
+    // Auto recalculate all finished goods costs to ensure accuracy after ingredient prices change
+    await recalculateFinishedGoodsCosts();
 
     res.status(201).json(proc);
   } catch (err) {
