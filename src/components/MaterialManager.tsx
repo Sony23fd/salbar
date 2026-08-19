@@ -60,6 +60,7 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
       const [isSubmitting, setIsSubmitting] = useState(false);
 
   const canEdit = currentUser.role === 'ADMIN' || currentUser.role === 'WAREHOUSE_WORKER' || currentUser.role === 'FINANCE';
+  const canViewFinancials = currentUser.role === 'ADMIN' || currentUser.role === 'FINANCE';
 
   // Material Types Mongolian Names
   const materialTypeNames: Record<MaterialType, string> = {
@@ -322,17 +323,19 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center shrink-0">
-            <DollarSign className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="text-[11px] font-bold text-slate-400 uppercase">Нийт Материалын Өртөг</div>
-            <div className="text-xl font-black text-emerald-700 font-mono">
-              ₮{materialsList.reduce((sum, p) => sum + (p.stockQuantity * (Number(p.costPrice) || Number(p.unitPrice))), 0).toLocaleString()}
+        {canViewFinancials && (
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
+            <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center shrink-0">
+              <DollarSign className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="text-[11px] font-bold text-slate-400 uppercase">Нийт Материалын Өртөг</div>
+              <div className="text-xl font-black text-emerald-700 font-mono">
+                ₮{materialsList.reduce((sum, p) => sum + (p.stockQuantity * (Number(p.costPrice) || Number(p.unitPrice))), 0).toLocaleString()}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Filter Tabs & Search */}
@@ -408,8 +411,8 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
                 <th className="px-4 py-3 font-bold text-[11px] uppercase">Материалын нэр / SKU</th>
                 <th className="px-4 py-3 font-bold text-[11px] uppercase">Төрөл</th>
                 <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Агуулахын үлдэгдэл</th>
-                <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Нэгж худалдан авах өртөг</th>
-                <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Нийт нөөцийн өртөг</th>
+                {canViewFinancials && <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Нэгж худалдан авах өртөг</th>}
+                {canViewFinancials && <th className="px-4 py-3 font-bold text-[11px] uppercase text-right">Нийт нөөцийн өртөг</th>}
                 <th className="px-4 py-3 font-bold text-[11px] uppercase text-center">Төлөв</th>
                 {canEdit && <th className="px-4 py-3 font-bold text-[11px] uppercase text-center">Үйлдэл</th>}
               </tr>
@@ -442,12 +445,16 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
                         )}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right font-mono font-semibold text-slate-800">
-                      ₮{cost.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono font-bold text-purple-700">
-                      ₮{totalVal.toLocaleString()}
-                    </td>
+                    {canViewFinancials && (
+                      <td className="px-4 py-3 text-right font-mono font-semibold text-slate-800">
+                        ₮{cost.toLocaleString()}
+                      </td>
+                    )}
+                    {canViewFinancials && (
+                      <td className="px-4 py-3 text-right font-mono font-bold text-purple-700">
+                        ₮{totalVal.toLocaleString()}
+                      </td>
+                    )}
                     <td className="px-4 py-3 text-center">
                       {!m.isActive ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
@@ -507,7 +514,7 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
 
               {materialsList.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-slate-500">
+                  <td colSpan={canEdit ? (canViewFinancials ? 7 : 5) : (canViewFinancials ? 6 : 4)} className="text-center py-8 text-slate-500">
                     Түүхий эд эсвэл сав баглаа материал олдсонгүй. "Шинэ ТЭМ бүртгэх" товчоор нэмнэ үү.
                   </td>
                 </tr>
@@ -582,17 +589,19 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Худалдан авах нэгж өртөг (₮) *</label>
-                  <input
-                    type="number"
-                    value={unitPrice}
-                    onChange={(e) => setUnitPrice(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder="1500"
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold"
-                    required
-                  />
-                </div>
+                {canViewFinancials && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Худалдан авах нэгж өртөг (₮) *</label>
+                    <input
+                      type="number"
+                      value={unitPrice}
+                      onChange={(e) => setUnitPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="1500"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold"
+                      required
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -686,16 +695,18 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
                 </div>
               )}
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Шинэ нэгж худалдан авах үнэ (₮)</label>
-                <input
-                  type="number"
-                  placeholder={`Одоогийн үнэ: ₮${replenishTarget.costPrice || replenishTarget.unitPrice}`}
-                  value={replenishCostPrice}
-                  onChange={(e) => setReplenishCostPrice(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono"
-                />
-              </div>
+              {canViewFinancials && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Шинэ нэгж худалдан авах үнэ (₮)</label>
+                  <input
+                    type="number"
+                    placeholder={`Одоогийн үнэ: ₮${replenishTarget.costPrice || replenishTarget.unitPrice}`}
+                    value={replenishCostPrice}
+                    onChange={(e) => setReplenishCostPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono"
+                  />
+                </div>
+              )}
 
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                 <button

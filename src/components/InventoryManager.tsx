@@ -244,6 +244,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
   };
 
   const canEdit = currentUser.role === 'ADMIN' || currentUser.role === 'WAREHOUSE_WORKER';
+  const canViewFinancials = currentUser.role === 'ADMIN' || currentUser.role === 'FINANCE';
 
   const totalInventoryValue = products.reduce((sum, p) => sum + (Number(p.costPrice) * p.stockQuantity), 0);
   const totalSalesValue = products.reduce((sum, p) => sum + (Number(p.unitPrice || 0) * p.stockQuantity), 0);
@@ -266,18 +267,22 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
             Барааны код (SKU), үнэ, агуулахын үлдэгдлийн хяналт ба нөхөн татан авалт.
           </p>
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div className="flex flex-col bg-slate-50 border border-slate-200 rounded-xl p-3">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Нийт өртөг</span>
-              <span className="text-sm font-bold text-slate-900">₮{filteredProducts.length !== products.length ? filteredInventoryValue.toLocaleString() : totalInventoryValue.toLocaleString()}</span>
-            </div>
-            <div className="flex flex-col bg-emerald-50 border border-emerald-200 rounded-xl p-3">
-              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Нийт борлуулалт</span>
-              <span className="text-sm font-bold text-emerald-900">₮{filteredProducts.length !== products.length ? filteredSalesValue.toLocaleString() : totalSalesValue.toLocaleString()}</span>
-            </div>
-            <div className="flex flex-col bg-blue-50 border border-blue-200 rounded-xl p-3">
-              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">Хүлээгдэж буй ашиг</span>
-              <span className="text-sm font-bold text-blue-900">₮{filteredProducts.length !== products.length ? (filteredSalesValue - filteredInventoryValue).toLocaleString() : (totalSalesValue - totalInventoryValue).toLocaleString()}</span>
-            </div>
+            {canViewFinancials && (
+              <>
+                <div className="flex flex-col bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Нийт өртөг</span>
+                  <span className="text-sm font-bold text-slate-900">₮{filteredProducts.length !== products.length ? filteredInventoryValue.toLocaleString() : totalInventoryValue.toLocaleString()}</span>
+                </div>
+                <div className="flex flex-col bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                  <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Нийт борлуулалт</span>
+                  <span className="text-sm font-bold text-emerald-900">₮{filteredProducts.length !== products.length ? filteredSalesValue.toLocaleString() : totalSalesValue.toLocaleString()}</span>
+                </div>
+                <div className="flex flex-col bg-blue-50 border border-blue-200 rounded-xl p-3">
+                  <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">Хүлээгдэж буй ашиг</span>
+                  <span className="text-sm font-bold text-blue-900">₮{filteredProducts.length !== products.length ? (filteredSalesValue - filteredInventoryValue).toLocaleString() : (totalSalesValue - totalInventoryValue).toLocaleString()}</span>
+                </div>
+              </>
+            )}
             <div className="flex flex-col bg-purple-50 border border-purple-200 rounded-xl p-3">
               <span className="text-[10px] font-bold text-purple-600 uppercase tracking-wider mb-1">Нийт тоо ширхэг</span>
               <span className="text-sm font-bold text-purple-900">{filteredProducts.length !== products.length ? filteredQuantity.toLocaleString() : totalQuantity.toLocaleString()} ш</span>
@@ -362,11 +367,19 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
               <tr>
                 <th className="p-4">SKU / Барааны мэдээлэл</th>
                 <th className="p-4">Ангилал</th>
-                <th className="p-4 text-right">Өртөг үнэ</th>
-                <th className="p-4 text-right">Зарах үнэ</th>
+                {canViewFinancials && (
+                  <>
+                    <th className="p-4 text-right">Өртөг үнэ</th>
+                    <th className="p-4 text-right">Зарах үнэ</th>
+                  </>
+                )}
                 <th className="p-4 text-right">Агуулахын үлдэгдэл</th>
-                <th className="p-4 text-right">Нийт өртөг дүн</th>
-                <th className="p-4 text-right">Нийт зарах дүн</th>
+                {canViewFinancials && (
+                  <>
+                    <th className="p-4 text-right">Нийт өртөг дүн</th>
+                    <th className="p-4 text-right">Нийт зарах дүн</th>
+                  </>
+                )}
                 <th className="p-4 text-center">Төлөв</th>
                 {canEdit && <th className="p-4 text-center">Үйлдэл</th>}
               </tr>
@@ -374,7 +387,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
             <tbody className="divide-y divide-slate-100 font-sans">
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 9 : 8} className="p-8 text-center text-slate-500">
+                  <td colSpan={canEdit ? (canViewFinancials ? 9 : 5) : (canViewFinancials ? 8 : 4)} className="p-8 text-center text-slate-500">
                     Хайлтад тохирох бараа олдсонгүй.
                   </td>
                 </tr>
@@ -397,7 +410,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                             {prod.description}
                           </div>
                         )}
-                        {(!prod.materialType || prod.materialType === 'FINISHED_GOOD') && (prod.profitPercent !== undefined || prod.commissionPercent !== undefined || prod.vatPercent !== undefined) && (
+                        {(!prod.materialType || prod.materialType === 'FINISHED_GOOD') && canViewFinancials && (prod.profitPercent !== undefined || prod.commissionPercent !== undefined || prod.vatPercent !== undefined) && (
                           <div className="flex flex-wrap gap-1 mt-1.5">
                             {prod.profitPercent !== undefined && prod.profitPercent > 0 && (
                               <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-100 text-green-800 border border-green-200">
@@ -425,13 +438,17 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                         </span>
                       </td>
 
-                      <td className="p-4 text-right font-mono font-bold text-slate-900">
-                        {prod.costPrice.toLocaleString()}₮
-                      </td>
+                      {canViewFinancials && (
+                        <>
+                          <td className="p-4 text-right font-mono font-bold text-slate-900">
+                            {prod.costPrice.toLocaleString()}₮
+                          </td>
 
-                      <td className="p-4 text-right font-mono font-bold text-emerald-700">
-                        {prod.unitPrice > 0 ? `${prod.unitPrice.toLocaleString()}₮` : '-'}
-                      </td>
+                          <td className="p-4 text-right font-mono font-bold text-emerald-700">
+                            {prod.unitPrice > 0 ? `${prod.unitPrice.toLocaleString()}₮` : '-'}
+                          </td>
+                        </>
+                      )}
 
                       <td className="p-4 text-right font-mono font-bold text-sm">
                         <span className={isCritical ? 'text-red-600' : isLow ? 'text-amber-600' : 'text-slate-900'}>
@@ -439,13 +456,17 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                         </span>
                       </td>
 
-                      <td className="p-4 text-right font-mono font-bold text-sm text-slate-700 bg-slate-50">
-                        {(Number(prod.costPrice) * prod.stockQuantity).toLocaleString()}₮
-                      </td>
+                      {canViewFinancials && (
+                        <>
+                          <td className="p-4 text-right font-mono font-bold text-sm text-slate-700 bg-slate-50">
+                            {(Number(prod.costPrice) * prod.stockQuantity).toLocaleString()}₮
+                          </td>
 
-                      <td className="p-4 text-right font-mono font-bold text-sm text-emerald-700 bg-emerald-50/50">
-                        {(Number(prod.unitPrice || 0) * prod.stockQuantity).toLocaleString()}₮
-                      </td>
+                          <td className="p-4 text-right font-mono font-bold text-sm text-emerald-700 bg-emerald-50/50">
+                            {(Number(prod.unitPrice || 0) * prod.stockQuantity).toLocaleString()}₮
+                          </td>
+                        </>
+                      )}
 
                       <td className="p-4 text-center">
                         {!prod.isActive ? (
@@ -655,46 +676,48 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="col-span-1">
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Ашгийн хувь (%)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={profitPercent}
-                    onChange={(e) => setProfitPercent(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder="Жишээ нь: 10"
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-mono"
-                  />
-                  <p className="text-[10px] text-slate-500 mt-1">Үндсэн ашиг</p>
-                </div>
+              {canViewFinancials && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="col-span-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Ашгийн хувь (%)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={profitPercent}
+                      onChange={(e) => setProfitPercent(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="Жишээ нь: 10"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-mono"
+                    />
+                    <p className="text-[10px] text-slate-500 mt-1">Үндсэн ашиг</p>
+                  </div>
 
-                <div className="col-span-1">
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Борлуулалтын хувь (%)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={commissionPercent}
-                    onChange={(e) => setCommissionPercent(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder="Жишээ нь: 5"
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-medium"
-                  />
-                </div>
+                  <div className="col-span-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Борлуулалтын хувь (%)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={commissionPercent}
+                      onChange={(e) => setCommissionPercent(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="Жишээ нь: 5"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 font-medium"
+                    />
+                  </div>
 
-                <div className="col-span-1">
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
-                    НӨАТ (%)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={vatPercent}
-                    onChange={(e) => setVatPercent(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder="Жишээ нь: 10"
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-slate-500 font-mono"
-                  />
+                  <div className="col-span-1">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
+                      НӨАТ (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={vatPercent}
+                      onChange={(e) => setVatPercent(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="Жишээ нь: 10"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-slate-500 font-mono"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
                 <button

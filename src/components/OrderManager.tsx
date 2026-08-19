@@ -48,6 +48,7 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
   const [barcodeInput, setBarcodeInput] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const canViewFinancials = currentUser.role === 'ADMIN' || currentUser.role === 'FINANCE';
 
   // Admin Status Modal state
   const [statusModalOrder, setStatusModalOrder] = useState<Order | null>(null);
@@ -406,7 +407,7 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
                   </div>
 
                   <div className="text-right text-xs flex flex-col items-end gap-1">
-                    <div className="font-extrabold text-slate-900 text-sm font-mono">{ord.totalAmount.toLocaleString()}₮</div>
+                    {canViewFinancials && <div className="font-extrabold text-slate-900 text-sm font-mono">{ord.totalAmount.toLocaleString()}₮</div>}
                     <div className="text-slate-500 text-[11px]">{createdDate}</div>
                     
                     <button
@@ -441,9 +442,9 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
                                 `).join('')}
                               </tbody>
                             </table>
-                            <div style="margin-top: 20px; text-align: right; font-size: 18px;">
+                            ${canViewFinancials ? `<div style="margin-top: 20px; text-align: right; font-size: 18px;">
                               <strong>Нийт дүн:</strong> ${ord.totalAmount.toLocaleString()}₮
-                            </div>
+                            </div>` : ''}
                             <div style="margin-top: 50px; display: flex; justify-content: space-between;">
                               <div>
                                 <strong>Хүлээлгэн өгсөн:</strong> .....................................<br/>
@@ -766,7 +767,7 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
                               
                               return (
                                 <option key={p.id} value={p.id}>
-                                  {p.name} ({p.sku}) — {effectivePrice.toLocaleString()}₮ [Үлдэгдэл: {p.stockQuantity}]
+                                  {p.name} ({p.sku}) {canViewFinancials ? `— ${effectivePrice.toLocaleString()}₮` : ''} [Үлдэгдэл: {p.stockQuantity}]
                                 </option>
                               );
                             })}
@@ -788,9 +789,11 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
                           />
                         </div>
 
-                        <div className="w-28 text-right font-mono font-bold text-slate-900 text-xs">
-                          {rowTotal.toLocaleString()}₮
-                        </div>
+                        {canViewFinancials && (
+                          <div className="w-28 text-right font-mono font-bold text-slate-900 text-xs">
+                            {rowTotal.toLocaleString()}₮
+                          </div>
+                        )}
 
                         {orderItems.length > 1 && (
                           <button
@@ -808,12 +811,14 @@ export const OrderManager: React.FC<OrderManagerProps> = ({
               </div>
 
               {/* Order Total Footer */}
-              <div className="flex items-center justify-between bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                <span className="text-xs font-bold text-slate-700">Нийт бодогдсон дүн</span>
-                <span className="text-base font-black text-slate-900 font-mono">
-                  {liveTotalAmount.toLocaleString()} ₮
-                </span>
-              </div>
+              {canViewFinancials && (
+                <div className="flex items-center justify-between bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                  <span className="text-xs font-bold text-slate-700">Нийт бодогдсон дүн</span>
+                  <span className="text-base font-black text-slate-900 font-mono">
+                    {liveTotalAmount.toLocaleString()} ₮
+                  </span>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Дотоод тэмдэглэл</label>

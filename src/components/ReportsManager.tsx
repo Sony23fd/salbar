@@ -13,6 +13,7 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) =
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('ALL');
+  const canViewFinancials = currentUser.role === 'ADMIN' || currentUser.role === 'FINANCE';
   
   // Pagination
   const [page, setPage] = useState(1);
@@ -194,7 +195,7 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) =
       </div>
 
       {/* COMPREHENSIVE FINANCIAL DASHBOARD */}
-      {summary && currentUser.role !== 'WAREHOUSE_WORKER' && (
+      {summary && canViewFinancials && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in duration-300">
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
             <div className="flex items-center gap-2 text-slate-500 font-bold text-[10px] uppercase tracking-wider">
@@ -305,8 +306,12 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) =
                   <th className="p-4 text-right">Орлого (+)</th>
                   <th className="p-4 text-right">Зарлага (-)</th>
                   <th className="p-4 text-right">Үлдэгдэл</th>
-                  <th className="p-4 text-right">Нэгж үнэ</th>
-                  <th className="p-4 text-right">Нийт дүн</th>
+                  {canViewFinancials && (
+                    <>
+                      <th className="p-4 text-right">Нэгж үнэ</th>
+                      <th className="p-4 text-right">Нийт дүн</th>
+                    </>
+                  )}
                   <th className="p-4">Хариуцсан хэрэглэгч</th>
                   <th className="p-4">Тайлбар</th>
                 </tr>
@@ -356,12 +361,16 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) =
                           <div className="text-[10px] text-slate-500 font-medium">{t.newSecondaryStock} ш</div>
                         )}
                       </td>
-                      <td className="p-4 text-right text-slate-500 font-mono font-medium">
-                        {t.unitPrice ? t.unitPrice.toLocaleString() + '₮' : (t.product ? ((t.product.costPrice && t.product.costPrice > 0) ? t.product.costPrice : (t.product.unitPrice || 0)).toLocaleString() + '₮' : '-')}
-                      </td>
-                      <td className="p-4 text-right text-slate-900 font-mono font-bold">
-                        {t.totalPrice ? t.totalPrice.toLocaleString() + '₮' : (t.product ? (Math.abs(t.quantity) * ((t.product.costPrice && t.product.costPrice > 0) ? t.product.costPrice : (t.product.unitPrice || 0))).toLocaleString() + '₮' : '-')}
-                      </td>
+                      {canViewFinancials && (
+                        <>
+                          <td className="p-4 text-right text-slate-500 font-mono font-medium">
+                            {t.unitPrice ? t.unitPrice.toLocaleString() + '₮' : (t.product ? ((t.product.costPrice && t.product.costPrice > 0) ? t.product.costPrice : (t.product.unitPrice || 0)).toLocaleString() + '₮' : '-')}
+                          </td>
+                          <td className="p-4 text-right text-slate-900 font-mono font-bold">
+                            {t.totalPrice ? t.totalPrice.toLocaleString() + '₮' : (t.product ? (Math.abs(t.quantity) * ((t.product.costPrice && t.product.costPrice > 0) ? t.product.costPrice : (t.product.unitPrice || 0))).toLocaleString() + '₮' : '-')}
+                          </td>
+                        </>
+                      )}
                       <td className="p-4">
                         <div className="font-semibold text-slate-900">{t.user?.name}</div>
                         <div className="text-[10px] text-slate-500">{t.user?.role}</div>
@@ -404,23 +413,27 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) =
       {activeReportTab === 'MANUFACTURING' && manufacturingReport && (
         <div className="space-y-6 animate-in fade-in">
           {/* Manufacturing Summary */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className={`grid grid-cols-2 ${canViewFinancials ? 'md:grid-cols-4' : 'md:grid-cols-1'} gap-4`}>
             <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl">
               <div className="text-[10px] uppercase font-bold text-slate-500 mb-1">Нийт үйлдвэрлэсэн</div>
               <div className="text-xl font-black text-slate-900 font-mono">{(manufacturingReport.summary.totalProducedQuantity || 0).toLocaleString()} ш</div>
             </div>
-            <div className="bg-amber-50/50 border border-amber-200/50 p-4 rounded-2xl">
-              <div className="text-[10px] uppercase font-bold text-amber-600 mb-1">Орцын зардал</div>
-              <div className="text-xl font-black text-amber-700 font-mono">₮{(manufacturingReport.summary.totalMaterialCost || 0).toLocaleString()}</div>
-            </div>
-            <div className="bg-red-50/50 border border-red-200/50 p-4 rounded-2xl">
-              <div className="text-[10px] uppercase font-bold text-red-600 mb-1">Нийт хорогдол</div>
-              <div className="text-xl font-black text-red-700 font-mono">₮{(manufacturingReport.summary.totalScrapCost || 0).toLocaleString()}</div>
-            </div>
-            <div className="bg-blue-50/50 border border-blue-200/50 p-4 rounded-2xl">
-              <div className="text-[10px] uppercase font-bold text-blue-600 mb-1">Үйлдвэрлэлийн өртөг</div>
-              <div className="text-xl font-black text-blue-700 font-mono">₮{(manufacturingReport.summary.totalProductionCost || 0).toLocaleString()}</div>
-            </div>
+            {canViewFinancials && (
+              <>
+                <div className="bg-amber-50/50 border border-amber-200/50 p-4 rounded-2xl">
+                  <div className="text-[10px] uppercase font-bold text-amber-600 mb-1">Орцын зардал</div>
+                  <div className="text-xl font-black text-amber-700 font-mono">₮{(manufacturingReport.summary.totalMaterialCost || 0).toLocaleString()}</div>
+                </div>
+                <div className="bg-red-50/50 border border-red-200/50 p-4 rounded-2xl">
+                  <div className="text-[10px] uppercase font-bold text-red-600 mb-1">Нийт хорогдол</div>
+                  <div className="text-xl font-black text-red-700 font-mono">₮{(manufacturingReport.summary.totalScrapCost || 0).toLocaleString()}</div>
+                </div>
+                <div className="bg-blue-50/50 border border-blue-200/50 p-4 rounded-2xl">
+                  <div className="text-[10px] uppercase font-bold text-blue-600 mb-1">Үйлдвэрлэлийн өртөг</div>
+                  <div className="text-xl font-black text-blue-700 font-mono">₮{(manufacturingReport.summary.totalProductionCost || 0).toLocaleString()}</div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Manufacturing Detailed Table */}
@@ -431,11 +444,15 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) =
                   <tr>
                     <th className="p-4">Бүтээгдэхүүн</th>
                     <th className="p-4 text-right">Үйлдвэрлэсэн (ш)</th>
-                    <th className="p-4 text-right">Нэгжийн дундаж өртөг</th>
-                    <th className="p-4 text-right">Орцын зардал</th>
-                    <th className="p-4 text-right">Хорогдол</th>
-                    <th className="p-4 text-right">Нэмэлт зардал</th>
-                    <th className="p-4 text-right">Нийт Өртөг</th>
+                    {canViewFinancials && (
+                      <>
+                        <th className="p-4 text-right">Нэгжийн дундаж өртөг</th>
+                        <th className="p-4 text-right">Орцын зардал</th>
+                        <th className="p-4 text-right">Хорогдол</th>
+                        <th className="p-4 text-right">Нэмэлт зардал</th>
+                        <th className="p-4 text-right">Нийт Өртөг</th>
+                      </>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -453,21 +470,25 @@ export const ReportsManager: React.FC<ReportsManagerProps> = ({ currentUser }) =
                         <td className="p-4 text-right font-black text-slate-700 font-mono">
                           {item.quantityProduced.toLocaleString()}
                         </td>
-                        <td className="p-4 text-right font-bold text-blue-700 font-mono">
-                          ₮{item.avgUnitCost.toLocaleString()}
-                        </td>
-                        <td className="p-4 text-right text-slate-600 font-mono">
-                          ₮{item.materialCost.toLocaleString()}
-                        </td>
-                        <td className="p-4 text-right text-red-600 font-mono">
-                          ₮{item.scrapCost.toLocaleString()}
-                        </td>
-                        <td className="p-4 text-right text-slate-600 font-mono">
-                          ₮{item.overheadCost.toLocaleString()}
-                        </td>
-                        <td className="p-4 text-right font-black text-slate-900 font-mono">
-                          ₮{item.totalCost.toLocaleString()}
-                        </td>
+                        {canViewFinancials && (
+                          <>
+                            <td className="p-4 text-right font-bold text-blue-700 font-mono">
+                              ₮{item.avgUnitCost.toLocaleString()}
+                            </td>
+                            <td className="p-4 text-right text-slate-600 font-mono">
+                              ₮{item.materialCost.toLocaleString()}
+                            </td>
+                            <td className="p-4 text-right text-red-600 font-mono">
+                              ₮{item.scrapCost.toLocaleString()}
+                            </td>
+                            <td className="p-4 text-right text-slate-600 font-mono">
+                              ₮{item.overheadCost.toLocaleString()}
+                            </td>
+                            <td className="p-4 text-right font-black text-slate-900 font-mono">
+                              ₮{item.totalCost.toLocaleString()}
+                            </td>
+                          </>
+                        )}
                       </tr>
                     ))
                   )}

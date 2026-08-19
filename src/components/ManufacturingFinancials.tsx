@@ -38,8 +38,9 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
   currentUser,
   onRefreshProducts
 }) => {
+  const canViewFinancials = currentUser.role === 'ADMIN' || currentUser.role === 'FINANCE';
   const [activeTab, setActiveTab] = useState<'BREAKDOWN' | 'OPERATIONS' | 'VALUATION'>(
-    currentUser.role === 'WAREHOUSE_WORKER' ? 'OPERATIONS' : 'BREAKDOWN'
+    canViewFinancials ? 'BREAKDOWN' : 'OPERATIONS'
   );
   const [loading, setLoading] = useState(true);
   const [financialData, setFinancialData] = useState<any>(null);
@@ -487,7 +488,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
 
       {/* Navigation Tabs */}
       <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 overflow-x-auto">
-        {currentUser.role !== 'WAREHOUSE_WORKER' && (
+        {canViewFinancials && (
           <button
             onClick={() => setActiveTab('BREAKDOWN')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
@@ -501,7 +502,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
         )}
 
 
-        {currentUser.role !== 'WAREHOUSE_WORKER' && (
+        {canViewFinancials && (
           <button
             onClick={() => setActiveTab('VALUATION')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
