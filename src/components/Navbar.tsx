@@ -76,7 +76,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <button
             onClick={onResetData}
-            title="Өгөгдлийг анхны хэвэнд нь оруулж шинэчлэх"
+            title="Мэдээллийг шинэчлэх"
             className="inline-flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white px-2.5 py-1 rounded-lg border border-slate-700 transition-colors text-xs font-medium"
           >
             <RefreshCw className="w-3 h-3" />

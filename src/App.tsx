@@ -182,10 +182,7 @@ export default function App() {
   };
 
   const handleResetDatabase = () => {
-    if (confirm('Агуулахын өгөгдлийн баазыг анхны хэвэнд нь оруулж шинэчлэх үү?')) {
-      // db.resetDatabase();
-      reloadData();
-    }
+    reloadData();
   };
 
   const handleQuickOrderForBranch = (branchId: string) => {
