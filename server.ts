@@ -594,6 +594,7 @@ app.put('/api/products/:id', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE
         unit: data.unit,
         materialType: data.materialType,
         minStockLevel: data.minStockLevel,
+        stockQuantity: data.stockQuantity !== undefined ? data.stockQuantity : undefined,
         categoryId: data.categoryId || null,
         profitPercent: data.profitPercent !== undefined ? data.profitPercent : undefined,
         commissionPercent: data.commissionPercent !== undefined ? data.commissionPercent : undefined,

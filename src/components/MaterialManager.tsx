@@ -157,7 +157,8 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
         unit,
         unitPrice: Number(unitPrice),
         costPrice: Number(unitPrice),
-        minStockLevel: Number(minStockLevel)
+        minStockLevel: Number(minStockLevel),
+        stockQuantity: Number(stockQuantity)
       });
       toast.success('Материалын мэдээлэл шинэчлэгдлээ!');
       setEditingMaterial(null);
@@ -219,12 +220,7 @@ export const MaterialManager: React.FC<MaterialManagerProps> = ({
           payload.secondaryQuantityToAdd = Number(replenishSecondaryQty);
         }
 
-        const res = await fetch('/api/products/replenish', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok) throw new Error(await res.text());
+        await api.post('/products/replenish', payload);
       }
 
       toast.success('Материалын агуулахын нөөц амжилттай нэмэгдлээ!');
