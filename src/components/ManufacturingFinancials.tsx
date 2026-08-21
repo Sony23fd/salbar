@@ -28,6 +28,7 @@ import {
   Home,
   ChevronDown
 } from 'lucide-react';
+import { PricingModelTab } from './PricingModelTab';
 
 interface ManufacturingFinancialsProps {
   currentUser: User;
@@ -39,7 +40,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
   onRefreshProducts
 }) => {
   const canViewFinancials = currentUser.role === 'ADMIN' || currentUser.role === 'FINANCE';
-  const [activeTab, setActiveTab] = useState<'BREAKDOWN' | 'OPERATIONS' | 'VALUATION'>(
+  const [activeTab, setActiveTab] = useState<'BREAKDOWN' | 'OPERATIONS' | 'VALUATION' | 'PRICING_MODEL'>(
     canViewFinancials ? 'BREAKDOWN' : 'OPERATIONS'
   );
   const [loading, setLoading] = useState(true);
@@ -48,6 +49,8 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
   const [boms, setBoms] = useState<any[]>([]);
   const [procurements, setProcurements] = useState<any[]>([]);
   const [productionBatches, setProductionBatches] = useState<any[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [globalFixedCost, setGlobalFixedCost] = useState<number>(0);
 
   // Date Range State for Financial Summary
   const [dateRange, setDateRange] = useState<'today' | '7days' | '30days' | 'thisMonth' | 'lastMonth' | 'thisYear' | 'all' | 'custom'>('7days');
@@ -199,14 +202,20 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
       }
 
       try {
-        const [bData, procData, batchData] = await Promise.all([
+        const [bData, procData, batchData, catData, settingsData] = await Promise.all([
           api.getBOMs(),
           api.getProcurements(startDate, endDate),
-          api.getProductionBatches(startDate, endDate)
+          api.getProductionBatches(startDate, endDate),
+          api.get('/categories').then(res => res.data),
+          api.getSettings().catch(() => ({}))
         ]);
         setBoms(bData);
         setProcurements(procData);
         setProductionBatches(batchData);
+        setCategories(catData || []);
+        if (settingsData && settingsData.TOTAL_MONTHLY_FIXED_COST) {
+          setGlobalFixedCost(Number(settingsData.TOTAL_MONTHLY_FIXED_COST) || 0);
+        }
       } catch (e) {
         setBoms([]);
         setProcurements([]);
@@ -512,6 +521,19 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
             }`}
           >
             <Boxes className="w-4 h-4" /> Материал & Үлдэгдлийн Үнэлгээ
+          </button>
+        )}
+
+        {canViewFinancials && (
+          <button
+            onClick={() => setActiveTab('PRICING_MODEL')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              activeTab === 'PRICING_MODEL'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Calculator className="w-4 h-4" /> Үнийн бодолт (Хүчин чадлаар)
           </button>
         )}
 
@@ -1467,6 +1489,15 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
             </form>
           </div>
         </div>
+      )}
+
+      {activeTab === 'PRICING_MODEL' && (
+        <PricingModelTab
+          products={products}
+          categories={categories}
+          globalFixedCost={globalFixedCost}
+          onRefresh={loadAllData}
+        />
       )}
       {/* MODAL 4: QUICK MATERIAL CREATION MODAL */}
       {showQuickMaterialModal && (

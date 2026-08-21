@@ -51,6 +51,7 @@ export interface Category {
   name: string;
   description?: string;
   isActive: boolean;
+  fixedCostAllocPercent?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -78,6 +79,9 @@ export interface Product {
   profitPercent?: number;
   commissionPercent?: number;
   vatPercent?: number;
+  dailyProductionTarget?: number;
+  packagingCost?: number;
+  laborCost?: number;
   categoryId?: string;
   category?: Category;
   createdAt: string;

@@ -604,6 +604,22 @@ export const api = {
     });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
+  },
+
+  async getSettings(): Promise<Record<string, string>> {
+    const res = await fetch(`${API_BASE}/settings`, { headers: getHeaders() });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async saveSetting(key: string, value: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/settings`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ key, value }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
   }
 };
 

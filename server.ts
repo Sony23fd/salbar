@@ -427,7 +427,8 @@ app.post('/api/categories', authenticate(['ADMIN']), async (req, res) => {
     const newCategory = await prisma.category.create({
       data: {
         name: req.body.name,
-        description: req.body.description
+        description: req.body.description,
+        fixedCostAllocPercent: req.body.fixedCostAllocPercent || 0
       }
     });
     res.json(newCategory);
@@ -442,7 +443,8 @@ app.put('/api/categories/:id', authenticate(['ADMIN']), async (req, res) => {
       where: { id: req.params.id },
       data: {
         name: req.body.name,
-        description: req.body.description
+        description: req.body.description,
+        fixedCostAllocPercent: req.body.fixedCostAllocPercent !== undefined ? req.body.fixedCostAllocPercent : undefined
       }
     });
     res.json(updated);
@@ -550,7 +552,10 @@ app.post('/api/products', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE'])
           categoryId: data.categoryId || null,
           profitPercent: data.profitPercent || 0,
           commissionPercent: data.commissionPercent || 0,
-          vatPercent: data.vatPercent || 0
+          vatPercent: data.vatPercent || 0,
+          dailyProductionTarget: data.dailyProductionTarget || 0,
+          packagingCost: data.packagingCost || 0,
+          laborCost: data.laborCost || 0
         },
         include: { category: true }
       });
@@ -598,7 +603,10 @@ app.put('/api/products/:id', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE
         categoryId: data.categoryId || null,
         profitPercent: data.profitPercent !== undefined ? data.profitPercent : undefined,
         commissionPercent: data.commissionPercent !== undefined ? data.commissionPercent : undefined,
-        vatPercent: data.vatPercent !== undefined ? data.vatPercent : undefined
+        vatPercent: data.vatPercent !== undefined ? data.vatPercent : undefined,
+        dailyProductionTarget: data.dailyProductionTarget !== undefined ? data.dailyProductionTarget : undefined,
+        packagingCost: data.packagingCost !== undefined ? data.packagingCost : undefined,
+        laborCost: data.laborCost !== undefined ? data.laborCost : undefined
       },
       include: { category: true }
     });
@@ -2625,6 +2633,30 @@ app.post('/api/data-admin/clear', authenticate(['DATA_ADMIN']), async (req, res)
   }
 });
 
+app.get('/api/settings', authenticate(['ADMIN', 'FINANCE', 'WAREHOUSE_WORKER', 'PRODUCTION']), async (req, res) => {
+  try {
+    const settings = await prisma.systemSetting.findMany();
+    const result: Record<string, string> = {};
+    settings.forEach(s => result[s.key] = s.value);
+    res.json(result);
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
+
+app.post('/api/settings', authenticate(['ADMIN', 'FINANCE']), async (req, res) => {
+  try {
+    const { key, value } = req.body;
+    const setting = await prisma.systemSetting.upsert({
+      where: { key },
+      update: { value: String(value) },
+      create: { key, value: String(value) }
+    });
+    res.json(setting);
+  } catch (err) {
+    handleApiError(res, err);
+  }
+});
 // Start Server conditionally (for local development or VPS)
 if (process.env.VERCEL_ENV !== 'production') {
   const PORT = process.env.PORT || 3001;
