@@ -30,6 +30,7 @@ export const StockReplenishSchema = z.object({
   userId: z.string().min(1, 'User ID is required'),
   notes: z.string().optional(),
   isAdjustment: z.boolean().optional(),
+  transactionType: z.enum(['INBOUND', 'OUTBOUND', 'ADJUSTMENT']).optional(),
 });
 
 export type StockReplenishInput = z.infer<typeof StockReplenishSchema>;

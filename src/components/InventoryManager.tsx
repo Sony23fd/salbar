@@ -52,7 +52,8 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
   // Form state for Replenish
   const [replenishQty, setReplenishQty] = useState<number | ''>(10);
   const [replenishNotes, setReplenishNotes] = useState('');
-  const [isAdjustment, setIsAdjustment] = useState(false);
+  const [transactionType, setTransactionType] = useState<'INBOUND' | 'ADJUSTMENT' | 'OUTBOUND'>('INBOUND');
+  const [outboundReason, setOutboundReason] = useState('');
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -201,10 +202,10 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
       const response = await replenishStock(
         {
           productId: replenishTarget.id,
-          quantityToAdd: Number(replenishQty),
+          quantityToAdd: transactionType === 'OUTBOUND' ? -Math.abs(Number(replenishQty)) : Number(replenishQty),
           userId: currentUser.id,
-          notes: replenishNotes,
-          isAdjustment,
+          notes: transactionType === 'OUTBOUND' && outboundReason ? `${outboundReason}: ${replenishNotes}` : replenishNotes,
+          transactionType,
         },
         currentUser.role
       );
@@ -212,11 +213,12 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
       if (!response.success) {
         toast.error(response.message);
       } else {
-        toast.success(`Барааны нөөц +${replenishQty} ширхэгээр нэмэгдлээ!`);
+        toast.success(`Барааны хөдөлгөөн амжилттай бүртгэгдлээ!`);
         setReplenishTarget(null);
         setReplenishQty(10);
         setReplenishNotes('');
-        setIsAdjustment(false);
+        setTransactionType('INBOUND');
+        setOutboundReason('');
         onRefresh();
       }
     } catch (err: any) {
@@ -746,7 +748,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
           <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150">
             <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <RefreshCw className="w-5 h-5 text-blue-600" /> Агуулахын үлдэгдэл нэмэх
+                <PackagePlus className="w-5 h-5 text-blue-600" /> Агуулахын хөдөлгөөн бүртгэх
               </h3>
               <button onClick={() => setReplenishTarget(null)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
@@ -768,25 +770,53 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                   Үйлдэл *
                 </label>
                 <select
-                  value={isAdjustment ? 'ADJUSTMENT' : 'INBOUND'}
-                  onChange={(e) => setIsAdjustment(e.target.value === 'ADJUSTMENT')}
+                  value={transactionType}
+                  onChange={(e) => setTransactionType(e.target.value as 'INBOUND' | 'ADJUSTMENT' | 'OUTBOUND')}
                   className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 focus:ring-2 focus:ring-blue-500 font-bold mb-3"
                 >
-                  <option value="INBOUND">Бараа татан авалт (Орлого)</option>
+                  <option value="INBOUND">Орлого (Татан авалт)</option>
+                  <option value="OUTBOUND">Зарлага (Дээж, Амталгаа, Хорогдол)</option>
                   <option value="ADJUSTMENT">Агуулахын тохируулга</option>
                 </select>
 
+                {transactionType === 'OUTBOUND' && (
+                  <>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Зарлагын шалтгаан *
+                    </label>
+                    <select
+                      value={outboundReason}
+                      onChange={(e) => setOutboundReason(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 focus:ring-2 focus:ring-blue-500 mb-3"
+                      required
+                    >
+                      <option value="">Шалтгаан сонгох...</option>
+                      <option value="Дээж">Дээж</option>
+                      <option value="Амталгаа">Амталгаа</option>
+                      <option value="Хорогдол">Хорогдол</option>
+                      <option value="Устгал">Устгал</option>
+                      <option value="Бусад">Бусад</option>
+                    </select>
+                  </>
+                )}
+
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Нэмэх (эсвэл хасах) тоо хэмжээ *
+                  {transactionType === 'OUTBOUND' ? 'Хасах тоо хэмжээ *' : 'Нэмэх (эсвэл хасах) тоо хэмжээ *'}
                 </label>
                 <input
                   type="number"
+                  min={transactionType === 'OUTBOUND' ? 1 : undefined}
                   value={replenishQty}
                   onChange={(e) => setReplenishQty(e.target.value === '' ? '' : Number(e.target.value))}
                   className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 focus:ring-2 focus:ring-blue-500 font-mono font-bold text-center mb-3"
                   required
                 />
-                <p className="text-[10px] text-slate-500 mb-3">Тохируулга хийж хасах бол хасах тэмдэгтэй (-5) бичнэ үү.</p>
+                {transactionType === 'ADJUSTMENT' && (
+                  <p className="text-[10px] text-slate-500 mb-3">Тохируулга хийж хасах бол хасах тэмдэгтэй (-5) бичнэ үү.</p>
+                )}
+                {transactionType === 'OUTBOUND' && (
+                  <p className="text-[10px] text-amber-600 mb-3 font-medium">Жич: Зарлага гаргах тул эерэг утгатай бичнэ үү (Жишээ нь: 5). Систем автоматаар хасна.</p>
+                )}
 
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Тайлбар
@@ -795,7 +825,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
                   type="text"
                   value={replenishNotes}
                   onChange={(e) => setReplenishNotes(e.target.value)}
-                  placeholder={isAdjustment ? 'Жишээ нь: Эвдэрсэн барааг хасав' : 'Жишээ нь: БНХАУ-аас ирсэн ачаа'}
+                  placeholder={transactionType === 'OUTBOUND' ? 'Нэмэлт тайлбар (Жишээ нь: Маркетингийн арга хэмжээнд)' : transactionType === 'ADJUSTMENT' ? 'Жишээ нь: Эвдэрсэн барааг хасав' : 'Жишээ нь: БНХАУ-аас ирсэн ачаа'}
                   className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 focus:ring-2 focus:ring-blue-500"
                 />
               </div>

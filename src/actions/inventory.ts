@@ -91,8 +91,8 @@ export async function replenishStock(
       };
     }
 
-    const { productId, quantityToAdd, userId, notes, isAdjustment } = validation.data;
-    const updatedProduct = await db.replenishProduct(productId, quantityToAdd, userId, notes, isAdjustment);
+    const { productId, quantityToAdd, userId, notes, isAdjustment, transactionType } = validation.data;
+    const updatedProduct = await db.replenishProduct(productId, quantityToAdd, userId, notes, isAdjustment, transactionType);
 
     return {
       success: true,

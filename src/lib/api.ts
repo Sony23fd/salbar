@@ -239,11 +239,11 @@ export const api = {
     return res.json();
   },
 
-  async replenishProduct(productId: string, quantityToAdd: number, userId: string, notes?: string, isAdjustment?: boolean): Promise<Product> {
+  async replenishProduct(productId: string, quantityToAdd: number, userId: string, notes?: string, isAdjustment?: boolean, transactionType?: string): Promise<Product> {
     const res = await fetch(`${API_BASE}/products/replenish`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({ productId, quantityToAdd, userId, notes, isAdjustment }),
+      body: JSON.stringify({ productId, quantityToAdd, userId, notes, isAdjustment, transactionType }),
     });
     if (!res.ok) throw new Error(await res.text());
     return res.json();

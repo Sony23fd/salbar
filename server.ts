@@ -636,7 +636,7 @@ app.put('/api/products/:id/reactivate', authenticate(['ADMIN']), async (req, res
 });
 
 app.post('/api/products/replenish', authenticate(['ADMIN', 'WAREHOUSE_WORKER', 'FINANCE']), async (req, res) => {
-  const { productId, quantityToAdd, secondaryQuantityToAdd, userId, notes, isAdjustment } = req.body;
+  const { productId, quantityToAdd, secondaryQuantityToAdd, userId, notes, isAdjustment, transactionType } = req.body;
   try {
     const updated = await prisma.$transaction(async (tx) => {
       const product = await tx.product.findUnique({ where: { id: productId } });
@@ -660,7 +660,7 @@ app.post('/api/products/replenish', authenticate(['ADMIN', 'WAREHOUSE_WORKER', '
         await tx.inventoryTransaction.create({
           data: {
             productId,
-            type: isAdjustment ? 'ADJUSTMENT' : 'INBOUND',
+            type: transactionType || (isAdjustment ? 'ADJUSTMENT' : 'INBOUND'),
             quantity: quantityToAdd,
             secondaryQuantity: secondaryQuantityToAdd,
             previousStock: product.stockQuantity,
@@ -670,7 +670,7 @@ app.post('/api/products/replenish', authenticate(['ADMIN', 'WAREHOUSE_WORKER', '
             unitPrice: priceToUse,
             totalPrice: Math.abs(quantityToAdd) * priceToUse,
             userId,
-            notes: notes || (isAdjustment ? 'Барааны тохируулга' : 'Бараа татан авалт')
+            notes: notes || (transactionType === 'OUTBOUND' ? 'Зарлага' : isAdjustment ? 'Барааны тохируулга' : 'Бараа татан авалт')
           }
         });
       }
