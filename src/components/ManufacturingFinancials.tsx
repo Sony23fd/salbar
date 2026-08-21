@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { Product, MaterialType, User } from '../types/wms';
+import { Product, MaterialType, User, Category } from '../types/wms';
 import { api } from '../lib/api';
 
 import {
@@ -26,9 +26,12 @@ import {
   Calculator,
   Scissors,
   Home,
-  ChevronDown
+  ChevronDown,
+  BarChart2,
+  Target
 } from 'lucide-react';
 import { PricingModelTab } from './PricingModelTab';
+import { ProductionPlanTab } from './ProductionPlanTab';
 
 interface ManufacturingFinancialsProps {
   currentUser: User;
@@ -40,7 +43,7 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
   onRefreshProducts
 }) => {
   const canViewFinancials = currentUser.role === 'ADMIN' || currentUser.role === 'FINANCE';
-  const [activeTab, setActiveTab] = useState<'BREAKDOWN' | 'OPERATIONS' | 'VALUATION' | 'PRICING_MODEL'>(
+  const [activeTab, setActiveTab] = useState<'BREAKDOWN' | 'OPERATIONS' | 'VALUATION' | 'PRICING_MODEL' | 'PLAN_VS_ACTUAL'>(
     canViewFinancials ? 'BREAKDOWN' : 'OPERATIONS'
   );
   const [loading, setLoading] = useState(true);
@@ -213,8 +216,8 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
         setProcurements(procData);
         setProductionBatches(batchData);
         setCategories(catData || []);
-        if (settingsData && settingsData.TOTAL_MONTHLY_FIXED_COST) {
-          setGlobalFixedCost(Number(settingsData.TOTAL_MONTHLY_FIXED_COST) || 0);
+        if (settingsData && (settingsData as any).TOTAL_MONTHLY_FIXED_COST) {
+          setGlobalFixedCost(Number((settingsData as any).TOTAL_MONTHLY_FIXED_COST) || 0);
         }
       } catch (e) {
         setBoms([]);
@@ -536,6 +539,17 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
             <Calculator className="w-4 h-4" /> Үнийн бодолт (Хүчин чадлаар)
           </button>
         )}
+
+        <button
+          onClick={() => setActiveTab('PLAN_VS_ACTUAL')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            activeTab === 'PLAN_VS_ACTUAL'
+              ? 'bg-white text-blue-600 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <PieChart className="w-4 h-4" /> Төлөвлөгөө & Гүйцэтгэл
+        </button>
 
         <button
           onClick={() => setActiveTab('OPERATIONS')}
@@ -1499,6 +1513,14 @@ export const ManufacturingFinancials: React.FC<ManufacturingFinancialsProps> = (
           onRefresh={loadAllData}
         />
       )}
+
+      {activeTab === 'PLAN_VS_ACTUAL' && (
+        <ProductionPlanTab
+          products={products}
+          productionBatches={productionBatches}
+        />
+      )}
+
       {/* MODAL 4: QUICK MATERIAL CREATION MODAL */}
       {showQuickMaterialModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">

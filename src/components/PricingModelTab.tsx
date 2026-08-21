@@ -74,7 +74,7 @@ export const PricingModelTab: React.FC<PricingModelTabProps> = ({
       );
 
       await Promise.all(
-        Object.entries(localProducts).map(([id, data]) =>
+        Object.entries(localProducts).map(([id, data]: [string, any]) =>
           api.updateProduct(id, {
             dailyProductionTarget: data.dailyProductionTarget,
             packagingCost: data.packagingCost,
